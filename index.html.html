@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;1,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; background: #fff; }
+  input, textarea, select, button { font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #A2A8B2; }
+  input:focus, textarea:focus { border-color: #155DFC !important; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: #E2E5EB; border-radius: 9px; }
+  ::-webkit-scrollbar-thumb:hover { background: #D2D6DD; }
+  .hbar::-webkit-scrollbar { height: 0; }
+</style>
+</helmet>
+<div style="height:100vh;display:flex;flex-direction:column;background:#fff;color:#1A1D21;overflow:hidden;">
+
+  <!-- ============ APP HEADER ============ -->
+  <header style="display:{{ dispChrome }};align-items:center;justify-content:space-between;height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid #EEF0F3;padding:0 18px;z-index:30;">
+    <button onClick="{{ goTo.inicio }}" style="display:flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;padding:0;">
+      <span style="width:31px;height:31px;border-radius:9px;background:#155DFC;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;line-height:1;font-family:'Plus Jakarta Sans';">t</span>
+      <span style="font-size:22px;font-weight:800;letter-spacing:-0.025em;color:#1A1D21;">turnito</span>
+    </button>
+    <div style="display:flex;align-items:center;gap:9px;">
+      <span style="width:34px;height:34px;border-radius:50%;background:#FB8C00;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 6px rgba(251,140,0,.35);">
+        <i data-lucide="zap" style="width:17px;height:17px;"></i>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;border:1px solid #E6E9EE;border-radius:999px;padding:5px 11px;font-weight:700;font-size:13px;color:#1A1D21;">
+        <i data-lucide="calendar" style="width:15px;height:15px;color:#155DFC;"></i>100
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;border:1px solid #E6E9EE;border-radius:999px;padding:5px 11px;font-weight:700;font-size:13px;color:#1A1D21;">
+        <i data-lucide="book-open" style="width:15px;height:15px;color:#155DFC;"></i>2
+      </span>
+      <button onClick="{{ goTo.perfil }}" style="width:35px;height:35px;border-radius:50%;border:1px solid #E6E9EE;background:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-style:italic;font-size:19px;color:#111;cursor:pointer;">e.</button>
+    </div>
+  </header>
+
+  <!-- ============ PUBLIC HEADER (vista cliente) ============ -->
+  <header style="display:{{ dispPublicHeader }};align-items:center;gap:10px;height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid #EEF0F3;padding:0 18px;z-index:30;">
+    <button onClick="{{ goTo.perfil }}" style="width:36px;height:36px;border-radius:10px;border:1px solid #E6E9EE;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1A1D21;">
+      <i data-lucide="chevron-left" style="width:20px;height:20px;"></i>
+    </button>
+    <span style="display:flex;align-items:center;gap:9px;">
+      <span style="width:28px;height:28px;border-radius:8px;background:#155DFC;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;font-family:'Plus Jakarta Sans';">t</span>
+      <span style="font-size:20px;font-weight:800;letter-spacing:-0.025em;">turnito</span>
+    </span>
+  </header>
+
+  <!-- ============ MAIN SCROLL ============ -->
+  <main ref="{{ mainRef }}" style="flex:1;overflow-y:auto;position:relative;">
+
+    <!-- ====== INICIO ====== -->
+    <section style="display:{{ dispInicio }};max-width:760px;margin:0 auto;padding:20px 16px 140px;">
+      <div onScroll="{{ onKpiScroll }}" class="hbar" style="display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="3">
+          <div data-kpi style="scroll-snap-align:center;flex:0 0 100%;min-width:100%;background:#fff;border:1px solid #ECEEF2;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:22px 22px 20px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+              <div>
+                <div style="font-size:16px;font-weight:700;color:#1A1D21;">{{ k.label }}</div>
+                <div style="font-size:13px;color:#9096A0;margin-top:2px;">{{ k.period }}</div>
+              </div>
+              <span style="width:38px;height:38px;border-radius:11px;background:#EAF1FF;display:flex;align-items:center;justify-content:center;color:#155DFC;">
+                <i data-lucide="{{ k.icon }}" style="width:19px;height:19px;"></i>
+              </span>
+            </div>
+            <div style="font-size:46px;font-weight:800;letter-spacing:-0.02em;line-height:1;margin:16px 0 12px;">{{ k.value }}</div>
+            <div style="display:flex;align-items:center;gap:9px;">
+              <span style="{{ k.deltaStyle }}font-weight:700;font-size:13px;padding:3px 8px;border-radius:7px;">{{ k.delta }}</span>
+              <span style="color:#9096A0;font-size:13px;">{{ k.prev }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:center;margin-top:16px;">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="3"><span style="{{ k.dotStyle }}"></span></sc-for>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin:28px 2px 14px;">
+        <i data-lucide="lightbulb" style="width:19px;height:19px;color:#15A148;"></i>
+        <span style="font-size:18px;font-weight:700;">Turnitips</span>
+      </div>
+      <div onScroll="{{ onTipScroll }}" class="hbar" style="display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;">
+        <sc-for list="{{ tips }}" as="t" hint-placeholder-count="3">
+          <div data-tip style="scroll-snap-align:center;flex:0 0 100%;min-width:100%;background:#fff;border:1.5px solid {{ t.accent }}33;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;">
+            <div style="font-size:17px;font-weight:700;margin-bottom:6px;">{{ t.title }}</div>
+            <div style="font-size:14px;line-height:1.5;color:#5B616B;margin-bottom:16px;">{{ t.desc }}</div>
+            <button style="width:100%;background:#155DFC;color:#fff;border:none;border-radius:11px;padding:13px;font-weight:700;font-size:15px;cursor:pointer;" style-hover="background:#0F4FD6;">{{ t.cta }}</button>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:center;margin-top:16px;">
+        <sc-for list="{{ tips }}" as="t" hint-placeholder-count="3"><span style="{{ t.dotStyle }}"></span></sc-for>
+      </div>
+    </section>
+
+    <!-- ====== RESERVAS ====== -->
+    <section style="display:{{ dispReservas }};max-width:880px;margin:0 auto;padding:18px 16px 140px;">
+      <div style="display:flex;gap:12px;margin-bottom:16px;">
+        <button onClick="{{ setTab.bloquear }}" style="{{ tabBloquear }}" style-hover="opacity:.92;">
+          <i data-lucide="lock" style="width:17px;height:17px;"></i>Bloquear horario
+        </button>
+        <button onClick="{{ setTab.agendar }}" style="{{ tabAgendar }}" style-hover="opacity:.92;">
+          <i data-lucide="calendar-plus" style="width:17px;height:17px;"></i>Agendar reserva
+        </button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+        <button style="display:flex;align-items:center;gap:8px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:10px 13px;font-weight:600;font-size:14px;cursor:pointer;color:#1A1D21;" style-hover="background:#F7F8FA;">
+          <i data-lucide="calendar" style="width:16px;height:16px;color:#155DFC;"></i>14 Junio – 13 Agosto
+          <i data-lucide="chevron-down" style="width:16px;height:16px;color:#9096A0;"></i>
+        </button>
+        <div style="display:flex;gap:3px;border:1px solid #E6E9EE;border-radius:11px;padding:3px;">
+          <button onClick="{{ setView.list }}" style="{{ viewList }}"><i data-lucide="list" style="width:18px;height:18px;"></i></button>
+          <button onClick="{{ setView.calendar }}" style="{{ viewCal }}"><i data-lucide="calendar" style="width:18px;height:18px;"></i></button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+        <div style="position:relative;flex:1;min-width:200px;">
+          <i data-lucide="search" style="width:17px;height:17px;color:#9096A0;position:absolute;left:14px;top:50%;transform:translateY(-50%);"></i>
+          <input placeholder="Buscar por nombre, correo, teléfono.." style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:11px 14px 11px 40px;font-size:14px;outline:none;color:#1A1D21;">
+        </div>
+        <button style="display:flex;align-items:center;gap:8px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:11px 14px;font-weight:600;font-size:14px;cursor:pointer;color:#3A3F46;" style-hover="background:#F7F8FA;"><i data-lucide="sliders-horizontal" style="width:16px;height:16px;"></i>Filtrar</button>
+        <button style="display:flex;align-items:center;gap:8px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:11px 14px;font-weight:600;font-size:14px;cursor:pointer;color:#3A3F46;" style-hover="background:#F7F8FA;"><i data-lucide="file-text" style="width:16px;height:16px;"></i>Exportar</button>
+      </div>
+
+      <sc-for list="{{ reservaDays }}" as="day" hint-placeholder-count="2">
+        <div style="font-size:13px;font-weight:700;color:#6B7280;margin:18px 4px 10px;">{{ day.date }}</div>
+        <div style="background:#fff;border:1px solid #ECEEF2;border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+          <sc-for list="{{ day.items }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-top:1px solid #F3F4F6;">
+              <div style="width:48px;font-weight:700;font-size:14px;color:#1A1D21;flex:0 0 auto;">{{ r.time }}</div>
+              <div style="{{ r.avatarStyle }}">{{ r.initials }}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:15px;color:#1A1D21;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.name }}</div>
+                <div style="font-size:13px;color:#9096A0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.service }}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto;">
+                <span style="font-weight:700;font-size:14px;">{{ r.amount }}</span>
+                <span style="{{ r.statusStyle }}font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap;">{{ r.status }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </section>
+
+    <!-- ====== AGENDAS ====== -->
+    <section style="display:{{ dispAgendas }};max-width:760px;margin:0 auto;padding:18px 16px 140px;">
+      <button onClick="{{ goTo.reservas }}" style="width:100%;background:#155DFC;color:#fff;border:none;border-radius:13px;padding:15px;font-weight:700;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px;" style-hover="background:#0F4FD6;">
+        <i data-lucide="notebook-pen" style="width:19px;height:19px;"></i>Crear agenda
+      </button>
+
+      <sc-for list="{{ agendas }}" as="a" hint-placeholder-count="2">
+        <div style="background:#fff;border:1px solid #ECEEF2;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);margin-bottom:16px;overflow:hidden;">
+          <div style="display:flex;align-items:flex-start;gap:13px;padding:18px 18px 14px;">
+            <sc-if value="{{ a.serif }}" hint-placeholder-val="{{ true }}">
+              <div style="width:46px;height:46px;border-radius:50%;border:1px solid #E6E9EE;background:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-style:italic;font-size:22px;color:#111;flex:0 0 auto;">e.</div>
+            </sc-if>
+            <sc-if value="{{ a.notSerif }}" hint-placeholder-val="{{ true }}">
+              <div style="{{ a.avatarStyle }}">{{ a.initials }}</div>
+            </sc-if>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:17px;color:#1A1D21;">{{ a.name }}</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#15A148;"></span>
+                <span style="font-size:13px;font-weight:600;color:#15A148;">{{ a.status }}</span>
+              </div>
+            </div>
+            <button style="width:36px;height:36px;border-radius:10px;border:1px solid #EAECEF;background:#F7F8FA;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#5B616B;" style-hover="background:#EEF0F3;"><i data-lucide="settings" style="width:17px;height:17px;"></i></button>
+            <button style="width:36px;height:36px;border-radius:10px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9096A0;" style-hover="background:#F2F3F5;"><i data-lucide="ellipsis-vertical" style="width:18px;height:18px;"></i></button>
+          </div>
+          <div style="margin:0 18px;display:flex;align-items:center;gap:10px;background:#EFF4FF;border-radius:11px;padding:11px 13px;">
+            <i data-lucide="link" style="width:16px;height:16px;color:#155DFC;flex:0 0 auto;"></i>
+            <span style="flex:1;font-size:14px;font-weight:600;color:#155DFC;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.link }}</span>
+            <button style="width:30px;height:30px;border-radius:8px;border:none;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#155DFC;" style-hover="background:#E3ECFF;"><i data-lucide="copy" style="width:15px;height:15px;"></i></button>
+            <button style="width:30px;height:30px;border-radius:8px;border:none;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#155DFC;" style-hover="background:#E3ECFF;"><i data-lucide="qr-code" style="width:15px;height:15px;"></i></button>
+          </div>
+          <div style="padding:14px 18px 4px;">
+            <div style="border-left:3px solid #155DFC;padding-left:11px;">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#9096A0;">PRÓXIMA RESERVA</div>
+              <div style="font-size:14px;font-weight:600;color:#1A1D21;margin-top:2px;">{{ a.next }}</div>
+            </div>
+          </div>
+          <div style="display:flex;border-top:1px solid #F3F4F6;margin-top:12px;">
+            <div style="flex:1;padding:14px 18px;">
+              <div style="font-size:12px;color:#9096A0;margin-bottom:3px;">Reservas hoy</div>
+              <div style="font-size:18px;font-weight:800;">{{ a.today }}</div>
+            </div>
+            <div style="flex:1;padding:14px 18px;border-left:1px solid #F3F4F6;">
+              <div style="font-size:12px;color:#9096A0;margin-bottom:3px;">Ingresos del mes</div>
+              <div style="font-size:18px;font-weight:800;">{{ a.income }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 4px;font-size:13px;color:#5B616B;">
+        <i data-lucide="sparkles" style="width:16px;height:16px;color:#155DFC;flex:0 0 auto;"></i>
+        <span><b>Tip:</b> ¿Sabías que podés tener todas tus agendas en <b>un mismo link?</b> <span style="color:#155DFC;text-decoration:underline;font-weight:600;cursor:pointer;">Mirá cómo</span></span>
+      </div>
+    </section>
+
+    <!-- ====== CUPONES ====== -->
+    <section style="display:{{ dispCupones }};max-width:880px;margin:0 auto;padding:18px 16px 140px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <button style="display:flex;align-items:center;gap:7px;background:#E7EEFF;color:#155DFC;border:none;border-radius:11px;padding:11px 15px;font-weight:700;font-size:14px;cursor:pointer;" style-hover="background:#DBE6FF;"><i data-lucide="plus" style="width:17px;height:17px;"></i>Crear cupón</button>
+        <div style="position:relative;flex:1;min-width:180px;">
+          <i data-lucide="search" style="width:17px;height:17px;color:#9096A0;position:absolute;left:14px;top:50%;transform:translateY(-50%);"></i>
+          <input placeholder="Buscar por código, agenda, cliente.." style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:11px 14px 11px 40px;font-size:14px;outline:none;">
+        </div>
+        <button style="display:flex;align-items:center;gap:8px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:11px 14px;font-weight:600;font-size:14px;cursor:pointer;color:#3A3F46;" style-hover="background:#F7F8FA;"><i data-lucide="sliders-horizontal" style="width:16px;height:16px;"></i>Filtrar</button>
+        <button style="display:flex;align-items:center;gap:8px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:11px 14px;font-weight:600;font-size:14px;cursor:pointer;color:#3A3F46;" style-hover="background:#F7F8FA;"><i data-lucide="file-text" style="width:16px;height:16px;"></i>Exportar</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;background:#FFF8E6;border:1px solid #F3E2B3;border-radius:12px;padding:12px 15px;margin-bottom:18px;">
+        <i data-lucide="triangle-alert" style="width:18px;height:18px;color:#D9A406;flex:0 0 auto;"></i>
+        <span style="font-size:14px;color:#8A6D1B;">La función de cupones de descuento es exclusiva para usuarios suscritos al plan <b style="color:#155DFC;">Advance o Pro</b>.</span>
+      </div>
+      <div style="border:1.5px dashed #D7DBE2;border-radius:20px;padding:34px 24px;text-align:center;background-image:radial-gradient(#E2E6EC 1.1px, transparent 1.1px);background-size:18px 18px;">
+        <div style="font-size:26px;font-weight:800;letter-spacing:-0.02em;margin-bottom:26px;">Cupones de descuento para tus clientes</div>
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:26px;">
+          <div style="position:relative;width:160px;height:148px;border-radius:18px;padding:16px;background:linear-gradient(140deg,#2E6BFF,#155DFC);color:#fff;overflow:hidden;text-align:left;box-shadow:0 10px 24px rgba(21,93,252,.28);">
+            <i data-lucide="percent" style="width:96px;height:96px;color:#fff;opacity:.16;position:absolute;right:-14px;bottom:-14px;"></i>
+            <span style="width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;"><i data-lucide="tag" style="width:20px;height:20px;"></i></span>
+            <div style="position:absolute;left:16px;bottom:16px;font-weight:700;font-size:16px;line-height:1.25;">Descuentos<br>Porcentuales</div>
+          </div>
+          <div style="position:relative;width:160px;height:148px;border-radius:18px;padding:16px;background:linear-gradient(140deg,#22B364,#15A148);color:#fff;overflow:hidden;text-align:left;box-shadow:0 10px 24px rgba(21,161,72,.28);">
+            <i data-lucide="dollar-sign" style="width:96px;height:96px;color:#fff;opacity:.16;position:absolute;right:-10px;bottom:-14px;"></i>
+            <span style="width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;"><i data-lucide="badge-dollar-sign" style="width:20px;height:20px;"></i></span>
+            <div style="position:absolute;left:16px;bottom:16px;font-weight:700;font-size:16px;line-height:1.25;">Descuentos de<br>Monto fijo</div>
+          </div>
+        </div>
+        <div style="font-size:15px;color:#6B7280;max-width:520px;margin:0 auto 22px;">Ofrece descuentos por servicio, para campañas puntuales, beneficios exclusivos y mucho más!</div>
+        <button style="background:#A9C5FF;color:#fff;border:none;border-radius:12px;padding:13px 26px;font-weight:700;font-size:15px;cursor:not-allowed;">Crear cupón de descuento</button>
+      </div>
+    </section>
+
+    <!-- ====== PERFIL ====== -->
+    <section style="display:{{ dispPerfil }};max-width:760px;margin:0 auto;padding:18px 16px 140px;">
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:18px;">
+        <button onClick="{{ goTo.vistaCliente }}" style="display:flex;align-items:center;gap:7px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:11px 16px;font-weight:700;font-size:14px;cursor:pointer;color:#1A1D21;" style-hover="background:#F7F8FA;"><i data-lucide="external-link" style="width:16px;height:16px;"></i>Ver perfil</button>
+        <button style="background:#155DFC;color:#fff;border:none;border-radius:11px;padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;" style-hover="background:#0F4FD6;">Guardar cambios</button>
+      </div>
+
+      <div style="background:#fff;border:1px solid #ECEEF2;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;margin-bottom:16px;">
+        <div style="font-size:17px;font-weight:700;">Imágenes del perfil</div>
+        <div style="font-size:13px;color:#9096A0;margin-bottom:16px;">Tu foto y portada serán visibles en tu perfil público</div>
+        <div style="position:relative;border-radius:14px;height:150px;background:#F4F6F9;background-image:repeating-linear-gradient(135deg,#EAEDF1 0 12px,#F4F6F9 12px 24px);display:flex;align-items:center;justify-content:center;overflow:hidden;">
+          <span style="font-family:ui-monospace,monospace;font-size:12px;color:#9AA1AC;letter-spacing:.04em;">portada · 1200 × 300</span>
+          <button style="position:absolute;top:12px;right:12px;width:38px;height:38px;border-radius:10px;border:none;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#3A3F46;box-shadow:0 1px 4px rgba(0,0,0,.08);"><i data-lucide="camera" style="width:18px;height:18px;"></i></button>
+        </div>
+        <div style="position:relative;height:46px;">
+          <div style="position:absolute;left:8px;top:-40px;width:84px;height:84px;border-radius:50%;border:4px solid #fff;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-style:italic;font-size:36px;color:#111;">e.</div>
+          <button style="position:absolute;left:62px;top:18px;width:30px;height:30px;border-radius:50%;border:2px solid #fff;background:#155DFC;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;"><i data-lucide="camera" style="width:14px;height:14px;"></i></button>
+        </div>
+        <div style="font-size:12px;color:#9AA1AC;margin-top:4px;">Recomendado: Portada 1200x300px, Foto 400x400px</div>
+      </div>
+
+      <div style="background:#fff;border:1px solid #ECEEF2;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;margin-bottom:16px;">
+        <div style="font-size:17px;font-weight:700;">Información básica</div>
+        <div style="font-size:13px;color:#9096A0;margin-bottom:18px;">Información que se mostrará en tu perfil público</div>
+        <label style="font-size:13px;font-weight:600;color:#6B7280;display:block;margin-bottom:8px;">Nombre del negocio</label>
+        <input value="EGOH" style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:12px 14px;font-size:15px;outline:none;margin-bottom:16px;">
+        <label style="font-size:13px;font-weight:600;color:#6B7280;display:block;margin-bottom:8px;">Categoría</label>
+        <input value="Moda y accesorios" style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:12px 14px;font-size:15px;outline:none;margin-bottom:16px;">
+        <label style="font-size:13px;font-weight:600;color:#6B7280;display:block;margin-bottom:8px;">Descripción</label>
+        <textarea rows="3" style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:12px 14px;font-size:15px;outline:none;resize:vertical;line-height:1.5;">Showroom de moda con atención personalizada. Asesoría de imagen y personal shopper con cita previa.</textarea>
+      </div>
+
+      <div style="background:#fff;border:1px solid #ECEEF2;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;">
+        <div style="font-size:17px;font-weight:700;margin-bottom:18px;">Contacto y ubicación</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;">
+            <label style="font-size:13px;font-weight:600;color:#6B7280;display:block;margin-bottom:8px;">Teléfono</label>
+            <input value="+54 11 5555 2911" style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:12px 14px;font-size:15px;outline:none;margin-bottom:16px;">
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <label style="font-size:13px;font-weight:600;color:#6B7280;display:block;margin-bottom:8px;">Email</label>
+            <input value="hola@egoh.com.ar" style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:12px 14px;font-size:15px;outline:none;margin-bottom:16px;">
+          </div>
+        </div>
+        <label style="font-size:13px;font-weight:600;color:#6B7280;display:block;margin-bottom:8px;">Dirección</label>
+        <input value="Av. Federico Lacroze 2911 PB A" style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:12px 14px;font-size:15px;outline:none;">
+      </div>
+    </section>
+
+    <!-- ====== INTEGRACIONES ====== -->
+    <section style="display:{{ dispIntegraciones }};max-width:880px;margin:0 auto;padding:18px 16px 140px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+        <sc-for list="{{ integrations }}" as="i" hint-placeholder-count="4">
+          <div style="background:#fff;border:1px solid #ECEEF2;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:22px;display:flex;flex-direction:column;">
+            <div style="{{ i.tileStyle }}">{{ i.short }}</div>
+            <div style="font-size:21px;font-weight:800;margin-top:14px;">{{ i.name }}</div>
+            <div style="font-size:13px;color:#9096A0;margin-top:2px;">{{ i.region }}</div>
+            <div style="font-size:14.5px;color:#454B54;line-height:1.5;margin-top:12px;flex:1;">{{ i.desc }}</div>
+            <a style="font-size:13.5px;color:#155DFC;font-weight:600;cursor:pointer;margin:14px 0 16px;display:inline-block;">¿Es seguro vincular mi cuenta?</a>
+            <button style="{{ i.btnStyle }}" style-hover="opacity:.92;"><i data-lucide="{{ i.btnIcon }}" style="width:17px;height:17px;"></i>{{ i.btnLabel }}</button>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ====== MENÚ ====== -->
+    <section style="display:{{ dispMenu }};max-width:680px;margin:0 auto;padding:18px 16px 140px;">
+      <sc-for list="{{ menuGroups }}" as="g" hint-placeholder-count="3">
+        <div style="font-size:13px;font-weight:700;color:#9096A0;letter-spacing:.04em;margin:18px 4px 10px;text-transform:uppercase;">{{ g.title }}</div>
+        <div style="background:#fff;border:1px solid #ECEEF2;border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+          <sc-for list="{{ g.items }}" as="m" hint-placeholder-count="4">
+            <button onClick="{{ m.onClick }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 16px;border:none;border-top:1px solid #F3F4F6;background:#fff;cursor:pointer;text-align:left;" style-hover="background:#F7F8FA;">
+              <span style="{{ m.iconStyle }}"><i data-lucide="{{ m.icon }}" style="width:18px;height:18px;"></i></span>
+              <span style="flex:1;font-size:15px;font-weight:600;color:{{ m.labelColor }};">{{ m.label }}</span>
+              <i data-lucide="chevron-right" style="width:18px;height:18px;color:#C4C9D1;"></i>
+            </button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </section>
+
+    <!-- ====== BUSCAR ====== -->
+    <section style="display:{{ dispBuscar }};max-width:680px;margin:0 auto;padding:18px 16px 140px;">
+      <div style="position:relative;margin-bottom:22px;">
+        <i data-lucide="search" style="width:19px;height:19px;color:#9096A0;position:absolute;left:15px;top:50%;transform:translateY(-50%);"></i>
+        <input placeholder="Buscar reservas, clientes, agendas.." style="width:100%;border:1px solid #E2E5EA;border-radius:13px;padding:14px 16px 14px 44px;font-size:15px;outline:none;">
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#9096A0;margin:0 4px 10px;text-transform:uppercase;letter-spacing:.04em;">Búsquedas recientes</div>
+      <div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:24px;">
+        <sc-for list="{{ recent }}" as="r" hint-placeholder-count="4">
+          <span style="display:flex;align-items:center;gap:7px;border:1px solid #E6E9EE;background:#fff;border-radius:999px;padding:8px 14px;font-size:13.5px;color:#3A3F46;cursor:pointer;"><i data-lucide="clock" style="width:14px;height:14px;color:#9096A0;"></i>{{ r }}</span>
+        </sc-for>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#9096A0;margin:0 4px 10px;text-transform:uppercase;letter-spacing:.04em;">Accesos rápidos</div>
+      <div style="background:#fff;border:1px solid #ECEEF2;border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+        <sc-for list="{{ buscarLinks }}" as="b" hint-placeholder-count="4">
+          <button onClick="{{ b.onClick }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 16px;border:none;border-top:1px solid #F3F4F6;background:#fff;cursor:pointer;text-align:left;" style-hover="background:#F7F8FA;">
+            <span style="width:34px;height:34px;border-radius:10px;background:#EAF1FF;display:flex;align-items:center;justify-content:center;color:#155DFC;"><i data-lucide="{{ b.icon }}" style="width:18px;height:18px;"></i></span>
+            <span style="flex:1;font-size:15px;font-weight:600;">{{ b.label }}</span>
+            <i data-lucide="chevron-right" style="width:18px;height:18px;color:#C4C9D1;"></i>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ====== CLIENTES ====== -->
+    <section style="display:{{ dispClientes }};max-width:880px;margin:0 auto;padding:18px 16px 140px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <div style="position:relative;flex:1;min-width:200px;">
+          <i data-lucide="search" style="width:17px;height:17px;color:#9096A0;position:absolute;left:14px;top:50%;transform:translateY(-50%);"></i>
+          <input placeholder="Buscar por nombre, correo, teléfono.." style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:11px 14px 11px 40px;font-size:14px;outline:none;">
+        </div>
+        <button style="display:flex;align-items:center;gap:8px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:11px 14px;font-weight:600;font-size:14px;cursor:pointer;color:#3A3F46;" style-hover="background:#F7F8FA;"><i data-lucide="file-text" style="width:16px;height:16px;"></i>Exportar</button>
+        <button style="display:flex;align-items:center;gap:8px;background:#155DFC;color:#fff;border:none;border-radius:11px;padding:11px 16px;font-weight:700;font-size:14px;cursor:pointer;" style-hover="background:#0F4FD6;"><i data-lucide="user-plus" style="width:16px;height:16px;"></i>Crear cliente</button>
+      </div>
+      <div style="background:#fff;border:1px solid #ECEEF2;border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #EEF0F3;">
+          <span style="font-size:14px;font-weight:700;color:#1A1D21;">Nombre</span>
+          <i data-lucide="arrow-down-up" style="width:15px;height:15px;color:#155DFC;"></i>
+        </div>
+        <sc-for list="{{ clientes }}" as="c" hint-placeholder-count="8">
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-top:1px solid #F3F4F6;">
+            <div style="{{ c.avatarStyle }}">{{ c.initials }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:15px;font-weight:600;color:#1A1D21;">{{ c.name }}</div>
+              <div style="font-size:12.5px;color:#9096A0;">{{ c.meta }}</div>
+            </div>
+            <button style="width:32px;height:32px;border-radius:9px;border:1px solid #EAECEF;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9096A0;" style-hover="background:#F2F3F5;"><i data-lucide="chevron-down" style="width:17px;height:17px;"></i></button>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ====== COBROS ====== -->
+    <section style="display:{{ dispCobros }};max-width:880px;margin:0 auto;padding:18px 16px 140px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <div style="position:relative;flex:1;min-width:200px;">
+          <i data-lucide="search" style="width:17px;height:17px;color:#9096A0;position:absolute;left:14px;top:50%;transform:translateY(-50%);"></i>
+          <input placeholder="Buscar por fecha, nombre, agenda.." style="width:100%;border:1px solid #E2E5EA;border-radius:11px;padding:11px 14px 11px 40px;font-size:14px;outline:none;">
+        </div>
+        <button style="display:flex;align-items:center;gap:8px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:11px 14px;font-weight:600;font-size:14px;cursor:pointer;color:#3A3F46;" style-hover="background:#F7F8FA;"><i data-lucide="sliders-horizontal" style="width:16px;height:16px;"></i>Filtrar</button>
+        <button style="display:flex;align-items:center;gap:8px;border:1px solid #E6E9EE;background:#fff;border-radius:11px;padding:11px 14px;font-weight:600;font-size:14px;cursor:pointer;color:#3A3F46;" style-hover="background:#F7F8FA;"><i data-lucide="file-text" style="width:16px;height:16px;"></i>Exportar</button>
+      </div>
+      <div style="background:#fff;border:1px solid #ECEEF2;border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+        <sc-for list="{{ cobros }}" as="c" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:13px;padding:15px 16px;border-top:1px solid #F3F4F6;">
+            <span style="width:40px;height:40px;border-radius:11px;background:#EAF1FF;display:flex;align-items:center;justify-content:center;color:#155DFC;flex:0 0 auto;"><i data-lucide="wallet" style="width:19px;height:19px;"></i></span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:15px;font-weight:700;color:#1A1D21;">{{ c.name }}</div>
+              <div style="font-size:12.5px;color:#9096A0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.agenda }} · {{ c.date }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto;">
+              <span style="font-weight:800;font-size:15px;">{{ c.amount }}</span>
+              <span style="{{ c.statusStyle }}font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;">{{ c.status }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ====== HERRAMIENTAS ====== -->
+    <section style="display:{{ dispHerramientas }};max-width:760px;margin:0 auto;padding:18px 16px 140px;">
+      <div style="background:#fff;border:1px solid #ECEEF2;border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+        <sc-for list="{{ herramientas }}" as="h" hint-placeholder-count="3">
+          <button style="width:100%;display:flex;align-items:flex-start;gap:14px;padding:18px 16px;border:none;border-top:1px solid #F3F4F6;background:#fff;cursor:pointer;text-align:left;" style-hover="background:#F7F8FA;">
+            <span style="{{ h.iconStyle }}"><i data-lucide="{{ h.icon }}" style="width:20px;height:20px;"></i></span>
+            <span style="flex:1;">
+              <span style="display:block;font-size:16px;font-weight:700;color:#1A1D21;margin-bottom:3px;">{{ h.title }}</span>
+              <span style="display:block;font-size:13.5px;color:#8A8F98;line-height:1.5;">{{ h.desc }}</span>
+            </span>
+            <i data-lucide="chevron-right" style="width:19px;height:19px;color:#C4C9D1;margin-top:2px;flex:0 0 auto;"></i>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ====== VISTA CLIENTE (público) ====== -->
+    <section style="display:{{ dispVistaCliente }};background:#F4F6F9;min-height:100%;padding:24px 16px 60px;">
+      <div style="max-width:440px;margin:0 auto;background:#fff;border:1px solid #ECEEF2;border-radius:20px;box-shadow:0 6px 30px rgba(16,24,40,.06);overflow:hidden;">
+        <div style="padding:30px 24px 22px;text-align:center;border-bottom:1px solid #F1F2F4;">
+          <div style="width:84px;height:84px;border-radius:50%;border:1px solid #ECEEF2;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-style:italic;font-size:40px;color:#111;">e.</div>
+          <div style="font-size:26px;font-weight:800;letter-spacing:-0.01em;">EGOH</div>
+        </div>
+        <div style="padding:20px 22px;">
+          <div style="background:#F5F6F8;border-radius:13px;padding:14px 16px;margin-bottom:20px;">
+            <div style="font-size:15px;font-weight:700;margin-bottom:5px;">Turnos presenciales</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13.5px;color:#5B616B;"><i data-lucide="map-pin" style="width:15px;height:15px;color:#E0533D;flex:0 0 auto;"></i>AV. FEDERICO LACROZE 2911 PB A</div>
+          </div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:12px;">Información</div>
+          <div style="display:flex;align-items:flex-start;gap:9px;font-size:14px;color:#3A3F46;margin-bottom:10px;line-height:1.4;"><i data-lucide="map-pin" style="width:16px;height:16px;color:#E0533D;flex:0 0 auto;margin-top:1px;"></i>La visita es únicamente con cita previa (SIN EXCEPCIÓN).</div>
+          <div style="display:flex;align-items:flex-start;gap:9px;font-size:14px;color:#3A3F46;margin-bottom:18px;line-height:1.4;"><i data-lucide="clock" style="width:16px;height:16px;color:#155DFC;flex:0 0 auto;margin-top:1px;"></i>Tiempo máximo: 30 minutos por visita.</div>
+          <div style="background:#EFF4FF;border-radius:11px;padding:11px 14px;font-size:12.5px;color:#5B616B;margin-bottom:18px;">¿Sabías que vos también podés tener tu agenda <b>gratuita?</b> <span style="color:#155DFC;text-decoration:underline;font-weight:600;cursor:pointer;">Ingresá aquí.</span></div>
+          <button style="width:100%;background:#155DFC;color:#fff;border:none;border-radius:12px;padding:15px;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:11px;" style-hover="background:#0F4FD6;"><i data-lucide="calendar-plus" style="width:18px;height:18px;"></i>Agendar Reserva</button>
+          <button style="width:100%;background:#fff;color:#1A1D21;border:1px solid #E2E5EA;border-radius:12px;padding:15px;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;" style-hover="background:#F7F8FA;"><i data-lucide="calendar-sync" style="width:18px;height:18px;"></i>Reprogramar / Cancelar Reserva</button>
+        </div>
+        <div style="padding:14px;text-align:center;border-top:1px solid #F1F2F4;font-size:13px;color:#9096A0;display:flex;align-items:center;justify-content:center;gap:6px;">
+          Hecho con
+          <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:18px;height:18px;border-radius:5px;background:#155DFC;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;">t</span><b style="color:#1A1D21;">turnito.app</b></span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <nav style="display:{{ dispChrome }};position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:40;align-items:center;background:#fff;border:1px solid #EAECEF;border-radius:20px;box-shadow:0 10px 34px rgba(16,24,40,.14);padding:9px 10px;gap:2px;">
+    <button onClick="{{ goTo.buscar }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:6px 14px;border-radius:13px;color:{{ navBuscar }};" style-hover="background:#F5F6F9;">
+      <i data-lucide="search" style="width:22px;height:22px;"></i>
+      <span style="font-size:12px;font-weight:600;">Buscar</span>
+    </button>
+    <span style="width:1px;height:34px;background:#EAECEF;margin:0 4px;"></span>
+    <button onClick="{{ goTo.reservas }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:6px 14px;border-radius:13px;color:{{ navReservas }};" style-hover="background:#F5F6F9;">
+      <i data-lucide="calendar-days" style="width:22px;height:22px;"></i>
+      <span style="font-size:12px;font-weight:600;">Reservas</span>
+    </button>
+    <button onClick="{{ goTo.agendas }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:6px 14px;border-radius:13px;color:{{ navAgendas }};" style-hover="background:#F5F6F9;">
+      <i data-lucide="notebook-tabs" style="width:22px;height:22px;"></i>
+      <span style="font-size:12px;font-weight:600;">Agendas</span>
+    </button>
+    <button onClick="{{ goTo.menu }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:6px 14px;border-radius:13px;color:{{ navMenu }};" style-hover="background:#F5F6F9;">
+      <i data-lucide="menu" style="width:22px;height:22px;"></i>
+      <span style="font-size:12px;font-weight:600;">Menú</span>
+    </button>
+  </nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 900, &quot;height&quot;: 760}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { current: 'inicio', reservaTab: 'agendar', reservaView: 'list', kpiIndex: 0, tipIndex: 0 };
+    this.mainRef = React.createRef();
+
+    const screens = ['inicio','reservas','agendas','cupones','perfil','integraciones','menu','buscar','clientes','cobros','herramientas','vistaCliente'];
+    this.goTo = {};
+    screens.forEach((k) => { this.goTo[k] = () => this.navigate(k); });
+
+    this.setTab = { agendar: () => this.setState({ reservaTab: 'agendar' }), bloquear: () => this.setState({ reservaTab: 'bloquear' }) };
+    this.setView = { list: () => this.setState({ reservaView: 'list' }), calendar: () => this.setState({ reservaView: 'calendar' }) };
+
+    this.onKpiScroll = (e) => {
+      const el = e.currentTarget; const c = el.querySelector('[data-kpi]');
+      const w = c ? c.offsetWidth + 14 : 320;
+      const i = Math.max(0, Math.min(2, Math.round(el.scrollLeft / w)));
+      if (i !== this.state.kpiIndex) this.setState({ kpiIndex: i });
+    };
+    this.onTipScroll = (e) => {
+      const el = e.currentTarget; const c = el.querySelector('[data-tip]');
+      const w = c ? c.offsetWidth + 14 : 320;
+      const i = Math.max(0, Math.min(2, Math.round(el.scrollLeft / w)));
+      if (i !== this.state.tipIndex) this.setState({ tipIndex: i });
+    };
+
+    // ---- static data ----
+    const av = (c, size, fs) => `width:${size}px;height:${size}px;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${fs}px;color:#fff;flex:0 0 auto;`;
+    this._av = av;
+
+    this.kpis = [
+      { label: 'Reservas totales', period: 'Junio 2026', value: '47', delta: '+24%', deltaStyle: 'background:#E7F6EC;color:#15A148;', prev: 'vs mayo, 2026', icon: 'calendar-days' },
+      { label: 'Ingresos del mes', period: 'Junio 2026', value: '$184.500', delta: '+18%', deltaStyle: 'background:#E7F6EC;color:#15A148;', prev: 'vs mayo, 2026', icon: 'dollar-sign' },
+      { label: 'Clientes nuevos', period: 'Junio 2026', value: '12', delta: '+9%', deltaStyle: 'background:#E7F6EC;color:#15A148;', prev: 'vs mayo, 2026', icon: 'user-plus' },
+    ];
+
+    this.tips = [
+      { title: 'Cobro de señas', desc: 'Asegurate de la asistencia de tus clientes con el cobro de señas en el momento de la reserva!', cta: 'Configurar el cobro de señas', accent: '#15A148' },
+      { title: 'Compartí tu agenda', desc: 'Compartí tu link de reservas en redes y sumá más turnos sin esfuerzo.', cta: 'Compartir mi link', accent: '#155DFC' },
+      { title: 'Sumá tus redes', desc: 'Conectá tu Instagram para que tus clientes reserven directo desde tu perfil.', cta: 'Conectar Instagram', accent: '#7C3AED' },
+    ];
+
+    this.reservaDays = [
+      { date: 'Hoy · Sábado 14 de junio', items: [
+        { time: '09:00', name: 'Andrea Selman', service: 'Asesoría de imagen', status: 'Confirmada', amount: '$8.500', initials: 'AS', avatarStyle: av('#155DFC', 42, 15) },
+        { time: '10:30', name: 'Carolina Garcia Siri', service: 'Personal shopper', status: 'Confirmada', amount: '$12.000', initials: 'CG', avatarStyle: av('#15A148', 42, 15) },
+        { time: '12:00', name: 'Magali Asato', service: 'Showroom privado', status: 'Seña pagada', amount: '$6.000', initials: 'MA', avatarStyle: av('#7C3AED', 42, 15) },
+        { time: '16:30', name: 'Flavia', service: 'Asesoría de imagen', status: 'Pendiente', amount: '$8.500', initials: 'FL', avatarStyle: av('#EA580C', 42, 15) },
+      ]},
+      { date: 'Lunes 16 de junio', items: [
+        { time: '11:00', name: 'Laura Castañeda', service: 'Personal shopper', status: 'Confirmada', amount: '$12.000', initials: 'LC', avatarStyle: av('#0EA5E9', 42, 15) },
+        { time: '15:00', name: 'Mariela Matera', service: 'Showroom privado', status: 'Confirmada', amount: '$6.000', initials: 'MM', avatarStyle: av('#DB2777', 42, 15) },
+        { time: '17:30', name: 'Melisa Beguelman', service: 'Asesoría de imagen', status: 'Seña pagada', amount: '$8.500', initials: 'MB', avatarStyle: av('#0891B2', 42, 15) },
+      ]},
+    ];
+
+    this.agendas = [
+      { name: 'EGOH', serif: true, notSerif: false, status: 'Activa', link: 'turnito.app/c/showroomegoh', next: 'Hoy 16:30 · Flavia', today: '4', income: '$184.500' },
+      { name: 'Showroom Centro', serif: false, notSerif: true, initials: 'SC', avatarStyle: av('#7C3AED', 46, 16), status: 'Activa', link: 'turnito.app/c/showroomcentro', next: 'Mar 16:00 · Gabriela Ares', today: '2', income: '$96.000' },
+    ];
+
+    const palette = ['#155DFC','#15A148','#7C3AED','#EA580C','#0EA5E9','#DB2777','#0891B2','#CA8A04','#9333EA','#E11D48','#2563EB','#059669'];
+    const cli = [
+      ['Andrea Selman','3 reservas'],['Carolina Garcia Siri','5 reservas'],['Deby Pereyra','1 reserva'],['Faig Silvia','2 reservas'],
+      ['Flavia','4 reservas'],['Gabriela Ares','2 reservas'],['Laura Castañeda','6 reservas'],['Magali Asato','3 reservas'],
+      ['Mariela Matera','2 reservas'],['Melisa Beguelman','1 reserva'],['Paola Gil','3 reservas'],['Vanina Loretti','2 reservas'],
+    ];
+    this.clientes = cli.map((c, i) => {
+      const parts = c[0].split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+      return { name: c[0], meta: c[1], initials: parts, avatarStyle: av(palette[i % palette.length], 38, 13) };
+    });
+
+    this.cobros = [
+      { date: '12 jun 2026', name: 'Andrea Selman', agenda: 'EGOH · Asesoría de imagen', amount: '$4.250', status: 'Acreditado', statusStyle: 'background:#E7F6EC;color:#15A148;' },
+      { date: '10 jun 2026', name: 'Magali Asato', agenda: 'EGOH · Showroom privado', amount: '$3.000', status: 'Acreditado', statusStyle: 'background:#E7F6EC;color:#15A148;' },
+      { date: '08 jun 2026', name: 'Laura Castañeda', agenda: 'EGOH · Personal shopper', amount: '$6.000', status: 'Pendiente', statusStyle: 'background:#FEF3E2;color:#D97706;' },
+      { date: '05 jun 2026', name: 'Carolina Garcia Siri', agenda: 'EGOH · Personal shopper', amount: '$6.000', status: 'Acreditado', statusStyle: 'background:#E7F6EC;color:#15A148;' },
+    ];
+
+    const tile = (bg) => `width:54px;height:54px;border-radius:14px;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;letter-spacing:.02em;flex:0 0 auto;`;
+    const baseInteg = [
+      { name: 'MercadoPago', region: 'Exclusivo para Argentina', desc: 'Permite el cobro de señas para la reserva de turnos', short: 'MP', tileStyle: tile('#00AEEF'), connected: false },
+      { name: 'PayPal', region: 'Disponible para cualquier país', desc: 'Permite el cobro de señas en dólares para la reserva de turnos', short: 'PP', tileStyle: tile('#003087'), connected: false },
+      { name: 'Google Calendar', region: 'Disponible para cualquier país', desc: 'Permite crear un evento con videoconferencia de Google Meet por cada turno reservado', short: '31', tileStyle: tile('#1A73E8'), connected: true },
+      { name: 'WhatsApp', region: 'Disponible para cualquier país', desc: 'Enviá confirmaciones y recordatorios automáticos a tus clientes', short: 'WA', tileStyle: tile('#25D366'), connected: false },
+    ];
+    const btnBlue = 'width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;font-weight:700;font-size:15px;border:none;background:#155DFC;color:#fff;cursor:pointer;';
+    const btnGreen = 'width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;font-weight:700;font-size:15px;border:1px solid #B7E4C7;background:#E7F6EC;color:#15A148;cursor:pointer;';
+    this.integrations = baseInteg.map((i) => Object.assign({}, i, {
+      btnStyle: i.connected ? btnGreen : btnBlue,
+      btnLabel: i.connected ? 'Conectado' : 'Conectar',
+      btnIcon: i.connected ? 'check' : 'shield-check',
+    }));
+
+    const mi = (icon, bg, color, label, onClick) => ({ icon, iconStyle: `width:34px;height:34px;border-radius:10px;background:${bg};display:flex;align-items:center;justify-content:center;color:${color};flex:0 0 auto;`, label, labelColor: '#1A1D21', onClick });
+    this.menuGroups = [
+      { title: 'General', items: [
+        mi('house', '#EAF1FF', '#155DFC', 'Inicio', this.goTo.inicio),
+        mi('users', '#EAF1FF', '#155DFC', 'Clientes', this.goTo.clientes),
+        mi('wallet', '#EAF1FF', '#155DFC', 'Cobros', this.goTo.cobros),
+        mi('ticket-percent', '#EAF1FF', '#155DFC', 'Cupones', this.goTo.cupones),
+      ]},
+      { title: 'Negocio', items: [
+        mi('store', '#EEF6F0', '#15A148', 'Perfil del negocio', this.goTo.perfil),
+        mi('plug', '#EEF6F0', '#15A148', 'Integraciones', this.goTo.integraciones),
+        mi('wrench', '#EEF6F0', '#15A148', 'Herramientas', this.goTo.herramientas),
+        mi('crown', '#FFF6E5', '#E0902B', 'Planes y precios', this.goTo.inicio),
+      ]},
+      { title: 'Cuenta', items: [
+        mi('settings', '#F1F2F4', '#5B616B', 'Configuración', this.goTo.inicio),
+        mi('circle-help', '#F1F2F4', '#5B616B', 'Centro de ayuda', this.goTo.inicio),
+        Object.assign(mi('log-out', '#FBEAEA', '#DC2626', 'Cerrar sesión', this.goTo.inicio), { labelColor: '#DC2626' }),
+      ]},
+    ];
+
+    this.herramientas = [
+      { title: 'Fechas especiales', desc: 'Reemplaza la disponibilidad repetitiva de fechas específicas con disponibilidad personalizada para esas fechas en particular.', icon: 'calendar-cog', iconStyle: 'width:40px;height:40px;border-radius:11px;background:#EAF1FF;display:flex;align-items:center;justify-content:center;color:#155DFC;flex:0 0 auto;' },
+      { title: 'Deshabilitar fechas', desc: 'Deshabilita fechas específicas en las que no se admitirán reservas.', icon: 'calendar-x-2', iconStyle: 'width:40px;height:40px;border-radius:11px;background:#FBEAE6;display:flex;align-items:center;justify-content:center;color:#E0533D;flex:0 0 auto;' },
+      { title: 'Código QR', desc: 'Genera códigos QR para que tus clientes reserven turnos fácilmente.', icon: 'qr-code', iconStyle: 'width:40px;height:40px;border-radius:11px;background:#F1EAFE;display:flex;align-items:center;justify-content:center;color:#7C3AED;flex:0 0 auto;' },
+    ];
+
+    this.recent = ['Andrea Selman', 'Personal shopper', 'Showroom privado', 'Magali'];
+    this.buscarLinks = [
+      { label: 'Reservas', icon: 'calendar-days', onClick: this.goTo.reservas },
+      { label: 'Clientes', icon: 'users', onClick: this.goTo.clientes },
+      { label: 'Agendas', icon: 'notebook-tabs', onClick: this.goTo.agendas },
+      { label: 'Cobros', icon: 'wallet', onClick: this.goTo.cobros },
+    ];
+  }
+
+  navigate(k) {
+    this.setState({ current: k });
+    requestAnimationFrame(() => { if (this.mainRef.current) this.mainRef.current.scrollTop = 0; });
+  }
+
+  componentDidMount() {
+    this._icons();
+    [60, 180, 400, 800, 1500].forEach((t) => setTimeout(() => this._icons(), t));
+  }
+  componentDidUpdate() { this._icons(); }
+  _icons() {
+    const run = () => {
+      if (window.lucide && window.lucide.createIcons) { try { window.lucide.createIcons(); } catch (e) {} }
+      else { setTimeout(run, 120); }
+    };
+    setTimeout(run, 0);
+  }
+
+  renderVals() {
+    this._icons();
+    const s = this.state;
+    const cur = s.current;
+    const out = {};
+    ['inicio','reservas','agendas','cupones','perfil','integraciones','menu','buscar','clientes','cobros','herramientas','vistaCliente'].forEach((k) => {
+      out['disp' + k.charAt(0).toUpperCase() + k.slice(1)] = (cur === k ? 'block' : 'none');
+    });
+    const isPublic = cur === 'vistaCliente';
+    out.dispChrome = isPublic ? 'none' : 'flex';
+    out.dispPublicHeader = isPublic ? 'flex' : 'none';
+
+    const nav = (k) => (cur === k ? '#155DFC' : '#9096A0');
+    out.navBuscar = nav('buscar'); out.navReservas = nav('reservas'); out.navAgendas = nav('agendas'); out.navMenu = nav('menu');
+
+    const dot = 'width:7px;height:7px;border-radius:50%;background:#D7DBE2;transition:all .2s;display:inline-block;';
+    const dotA = 'width:22px;height:7px;border-radius:7px;background:#1A1D21;transition:all .2s;display:inline-block;';
+    out.kpis = this.kpis.map((k, i) => Object.assign({}, k, { dotStyle: i === s.kpiIndex ? dotA : dot }));
+    out.tips = this.tips.map((t, i) => Object.assign({}, t, { dotStyle: i === s.tipIndex ? dotA : dot }));
+
+    const blueTab = 'flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;border:1px solid #155DFC;background:#155DFC;color:#fff;';
+    const whiteTab = 'flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;border:1px solid #E6E9EE;background:#fff;color:#3A3F46;';
+    out.tabBloquear = s.reservaTab === 'bloquear' ? blueTab : whiteTab;
+    out.tabAgendar = s.reservaTab === 'agendar' ? blueTab : whiteTab;
+
+    const vOn = 'display:flex;align-items:center;justify-content:center;width:40px;height:34px;border-radius:9px;cursor:pointer;border:none;background:#155DFC;color:#fff;';
+    const vOff = 'display:flex;align-items:center;justify-content:center;width:40px;height:34px;border-radius:9px;cursor:pointer;border:none;background:transparent;color:#9096A0;';
+    out.viewList = s.reservaView === 'list' ? vOn : vOff;
+    out.viewCal = s.reservaView === 'calendar' ? vOn : vOff;
+
+    const stMap = { 'Confirmada': 'background:#E7F6EC;color:#15A148;', 'Seña pagada': 'background:#EAF1FF;color:#155DFC;', 'Pendiente': 'background:#FEF3E2;color:#D97706;' };
+    out.reservaDays = this.reservaDays.map((d) => ({ date: d.date, items: d.items.map((it) => Object.assign({}, it, { statusStyle: stMap[it.status] || 'background:#F1F2F4;color:#6B7280;' })) }));
+
+    out.agendas = this.agendas;
+    out.clientes = this.clientes;
+    out.cobros = this.cobros;
+    out.integrations = this.integrations;
+    out.menuGroups = this.menuGroups;
+    out.herramientas = this.herramientas;
+    out.recent = this.recent;
+    out.buscarLinks = this.buscarLinks;
+
+    out.goTo = this.goTo; out.setTab = this.setTab; out.setView = this.setView;
+    out.onKpiScroll = this.onKpiScroll; out.onTipScroll = this.onTipScroll; out.mainRef = this.mainRef;
+    return out;
+  }
+}
+</script>
+</body>
+</html>
