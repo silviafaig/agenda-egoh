@@ -1,0 +1,9 @@
+{
+  "name": "agenda-egoh",
+  "private": true,
+  "description": "Agenda Showroom: reservas de visitas y videollamadas con preselección de prendas",
+  "scripts": {
+    "test": "node --test tests/logic.test.js",
+    "start": "npx --yes serve -l 8090 ."
+  }
+}
