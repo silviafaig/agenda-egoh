@@ -178,6 +178,7 @@
   function agenda() {
     const [desde, hasta] = rango();
     const abierta = S.ui.open && S.db.appts.find((a) => a.id === S.ui.open);
+    if (abierta) return detalle(abierta);
     const vista = S.ui.agendaVista;
     const tools = `<div class="toolbar"><div class="seg" role="group" aria-label="Vista">
         <button type="button" data-act="ag.vista" data-v="lista" aria-pressed="${vista === "lista"}">${I("list", 14)} Lista</button>
@@ -187,46 +188,64 @@
       <button type="button" class="btn sm light" data-act="ag.export">${I("download", 15)}Exportar</button></div>`;
     return `${P.title("Agenda", "Organizá tus citas y prepará cada visita.", `<button type="button" class="btn sm dark" data-act="mod.open" data-v="reserva">${I("plus", 15)}Nueva reserva</button>
         <button type="button" class="btn sm" data-act="mod.open" data-v="bloqueo">${I("ban", 15)}Bloquear horario</button>`)}
-      <div class="split${abierta ? " open" : ""}"><div class="smain">${tools}${vista === "lista" ? lista(desde, hasta) : semana()}</div>
-      ${abierta ? `<aside class="detail" aria-label="Detalle de la cita">${detalle(abierta)}</aside>` : ""}</div>`;
+      ${tools}${vista === "lista" ? lista(desde, hasta) : semana()}`;
   }
 
-  /* ---------- Detalle de cita ---------- */
+  /* ---------- Detalle de cita (pantalla completa, como en Figma) ---------- */
+  const MESES_L = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+  function fechaCompleta(ymd) {
+    const d = EG.parseYmd(ymd);
+    return cap(fechaLarga(ymd).split(" ")[0]) + " " + d.getDate() + " de " + MESES_L[d.getMonth()] + " de " + d.getFullYear();
+  }
   function detalle(a) {
     const s = S.db.settings;
     const msgRec = EG.msgRecordatorio(a, s, S.prod, S.citaLink(a));
     const msgSeg = EG.msgSeguimiento(a, s, S.prod);
     const c = a.clientaId && S.db.clientas.find((x) => x.id === a.clientaId);
+    const visitas = c ? EG.clientaStats(S.db, c).visitas : 0;
+    const fin = EG.toH(EG.toMin(a.hora) + s.duracion);
+    const campo = (label, val) => (val ? `<div class="stack sm" style="gap:2px"><span class="xs muted">${label}</span><span class="small">${val}</span></div>` : "");
     const prendas = a.prendas.length
       ? a.prendas.map((i, ix) => {
           const p = S.prod(i.id);
-          return `<div class="prenda-row">${U.thumbs([i], 1)}<span class="grow small"><span class="b">${esc(EG.itemName(i, S.prod))}</span><br><span class="muted">Talle ${esc(i.talle)} · <span class="num">${EG.priceTxt(p)}</span></span></span>
+          const estado = i.seLlevo === true ? "Se llevó" : i.seLlevo === false ? "No se la llevó" : "Sin registrar";
+          return `<div class="dprenda"><span class="dph">${U.photo(p)}</span><div class="stack sm"><h3>${esc(EG.itemName(i, S.prod))}</h3>
+            <span class="small muted">Talle ${esc(i.talle)} · <span class="num">${EG.priceTxt(p)}</span></span>
             <div class="pills"><button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="1" aria-pressed="${i.seLlevo === true}">Se llevó</button>
-            <button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="0" aria-pressed="${i.seLlevo === false}">No</button></div></div>`;
+            <button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="0" aria-pressed="${i.seLlevo === false}">No</button></div>
+            <span class="xs muted">${estado}</span></div></div>`;
         }).join("")
-      : `<p class="small muted">No eligió prendas antes de la cita.</p>`;
-    return `<div class="row between"><button type="button" class="back only-m" data-act="ag.close">${I("chevron-left", 16)}Volver</button>
-        <button type="button" class="iconbtn sm" data-act="ag.close" aria-label="Cerrar detalle">${I("x", 15)}</button></div>
-      <div class="row nowrap">${U.avatar(a.nombre, "lg")}<div class="grow"><h2>${esc(a.nombre)}</h2>
-        <p class="small muted">${esc(cap(fechaLarga(a.fecha)))} · ${esc(a.hora)} hs · ${U.tipoTxt(a, true)}</p>
-        <div class="row" style="margin-top:4px">${U.estadoChip(a)}${a.origen === "manual" ? '<span class="chip">Cargada a mano</span>' : ""}</div></div></div>
-      ${S.ui.avisar === a.id ? `<div class="notice soft stack sm" style="color:var(--ink)"><b>Reserva guardada.</b><span class="small">Mandale la confirmación a ${esc(a.nombre.split(" ")[0])}:</span>
+      : `<p class="empty">No eligió prendas antes de la cita.</p>`;
+    return `<button type="button" class="back" data-act="ag.close">${I("arrow-left", 16)}Volver a Agenda</button>
+      <div class="ptitle"><div><span class="label">Agenda / Detalle de cita</span><h1>Detalle de cita</h1>
+        <p class="sub">${esc(fechaCompleta(a.fecha))} · ${esc(a.hora)} – ${esc(fin)}</p>
+        <div class="row" style="margin-top:6px"><span class="small row" style="gap:5px">${a.tipo === "video" ? I("video", 15) : I("map-pin", 15)}${U.tipoTxt(a, true)}</span>${U.estadoChip(a)}${a.origen === "manual" ? '<span class="chip">Cargada a mano</span>' : ""}</div></div></div>
+      ${S.ui.avisar === a.id ? `<div class="notice soft stack sm" style="color:var(--ink);margin-bottom:16px"><b>Reserva guardada.</b><span class="small">Mandale la confirmación a ${esc(a.nombre.split(" ")[0])}:</span>
         <a class="btn sm dark" style="align-self:flex-start" href="${esc(EG.waLink(a.whatsapp, EG.msgConfirmacion(a, s, S.prod, S.citaLink(a))))}" target="_blank" rel="noopener" data-act="ag.avisado">${I("message-circle", 15)}Enviar confirmación por WhatsApp</a></div>` : ""}
-      <div class="row">${a.estado === "confirmada" ? `<a class="btn sm dark" href="${esc(EG.waLink(a.whatsapp, msgRec))}" target="_blank" rel="noopener">${I("message-circle", 15)}Recordatorio por WhatsApp</a>` : ""}
-        ${a.tipo === "video" && a.sala ? `<a class="btn sm" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${I("video", 15)}Abrir videollamada</a>` : ""}</div>
-      <div class="stack sm"><span class="label">Clienta</span><dl class="kv"><dt>WhatsApp</dt><dd class="num">+${esc(a.whatsapp)}</dd>
-        ${a.email ? `<dt>Email</dt><dd><a href="mailto:${esc(a.email)}">${esc(a.email)}</a></dd>` : ""}${a.zona ? `<dt>Zona</dt><dd>${esc(a.zona)}</dd>` : ""}
-        ${a.comoCompra ? `<dt>Compra</dt><dd>${esc(a.comoCompra)}</dd>` : ""}${a.queBusca ? `<dt>Busca</dt><dd>${esc(a.queBusca)}</dd>` : ""}</dl>
-        ${c ? `<button type="button" class="linkbtn" style="align-self:flex-start" data-act="cl.ver" data-v="${esc(c.id)}">Ver ficha de la clienta</button>` : ""}</div>
-      <div class="stack sm"><span class="label">Preselección · marcá qué se llevó</span><div class="stack" style="gap:10px">${prendas}</div></div>
-      <label class="f" for="n-${esc(a.id)}">Notas de la visita<textarea class="t" id="n-${esc(a.id)}" data-note="${esc(a.id)}" placeholder="Qué le gustó, qué talle le quedó, qué colores pidió…">${esc(a.notas)}</textarea></label>
-      <div class="stack sm"><span class="label">Estado</span><div class="pills">${U.ESTADOS.map((e) =>
-        `<button type="button" class="pill" data-act="ag.estado" data-a="${esc(a.id)}" data-v="${e[0]}" aria-pressed="${a.estado === e[0]}">${e[1]}</button>`).join("")}</div></div>
-      ${a.estado === "asistio"
-        ? `<div class="stack sm"><span class="label">Seguimiento</span><div class="mail">${esc(msgSeg)}</div>
-            <div class="row"><a class="btn sm dark" href="${esc(EG.waLink(a.whatsapp, msgSeg))}" target="_blank" rel="noopener">${I("message-circle", 15)}Enviar por WhatsApp</a>
-            <button type="button" class="btn sm" data-act="ag.copiarSeg" data-a="${esc(a.id)}">${I("copy", 15)}Copiar</button></div></div>`
-        : ""}`;
+      <div class="cols"><div class="stack lg">
+        <section class="card bordered stack"><div class="row nowrap">${U.avatar(a.nombre)}<div class="grow"><h3>${esc(a.nombre)}</h3><span class="xs muted">${visitas ? U.plural(visitas, "visita") + " anterior" + (visitas === 1 ? "" : "es") : "Primera visita"}</span></div>
+            ${c ? `<button type="button" class="linkbtn" data-act="cl.ver" data-v="${esc(c.id)}">Ver ficha</button>` : ""}</div>
+          <div class="dgrid">${campo("WhatsApp", `<span class="num">+${esc(a.whatsapp)}</span>`)}${campo("Email", a.email ? `<a href="mailto:${esc(a.email)}">${esc(a.email)}</a>` : "")}
+            ${campo("¿Cómo comprás?", esc(a.comoCompra))}${campo("Zona", esc(a.zona))}${campo("Lo que busca", esc(a.queBusca))}</div></section>
+        <section class="stack"><div class="row between"><h2>Prendas elegidas</h2><span class="small muted">${U.plural(a.prendas.length, "prenda")}</span></div>${prendas}
+          ${a.prendas.length ? `<p class="xs muted">Marcá qué se llevó al finalizar la cita.</p>` : ""}</section>
+        ${a.estado === "asistio"
+          ? `<section class="card bordered stack"><h3>Seguimiento</h3><div class="mail">${esc(msgSeg)}</div>
+              <div class="row"><a class="btn sm dark" href="${esc(EG.waLink(a.whatsapp, msgSeg))}" target="_blank" rel="noopener">${I("message-circle", 15)}Enviar por WhatsApp</a>
+              <button type="button" class="btn sm" data-act="ag.copiarSeg" data-a="${esc(a.id)}">${I("copy", 15)}Copiar</button></div></section>`
+          : ""}
+      </div><div class="stack lg">
+        <section class="card bordered stack"><h3>Estado</h3>
+          <select class="t" aria-label="Estado de la cita" data-change="ag.estadoSel" data-a="${esc(a.id)}">${U.ESTADOS.map((e) => `<option value="${e[0]}"${a.estado === e[0] ? " selected" : ""}>${e[1]}</option>`).join("")}</select>
+          <p class="xs muted">La asistencia se registra después de la visita.</p></section>
+        <section class="stack"><label class="f" for="n-${esc(a.id)}"><h3>Notas de la visita</h3><textarea class="t" id="n-${esc(a.id)}" data-note="${esc(a.id)}" placeholder="Escribí cómo fue la visita, qué le gustó y qué quedó pendiente…">${esc(a.notas)}</textarea></label>
+          <button type="button" class="btn sm" style="align-self:flex-end" data-act="ag.notas">Guardar notas</button></section>
+        <section class="card bordered stack"><h3>${a.tipo === "video" ? "Videollamada" : "Visita al showroom"}</h3>
+          <p class="small muted">${esc(cap(fechaLarga(a.fecha)))} · ${esc(a.hora)} – ${esc(fin)}</p>
+          ${a.tipo === "video" && a.sala ? `<a class="btn dark block" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${I("video", 15)}Abrir videollamada</a>` : ""}
+          ${a.estado === "confirmada" ? `<a class="btn block" href="${esc(EG.waLink(a.whatsapp, msgRec))}" target="_blank" rel="noopener">${I("message-circle", 15)}Recordatorio por WhatsApp</a>
+            <p class="xs muted">El recordatorio incluye el horario y el link para reprogramar o cancelar.</p>` : ""}</section>
+      </div></div>`;
   }
 
   /* ---------- ventanas ---------- */
@@ -326,8 +345,10 @@
     return false;
   };
 
-  A["ag.open"] = (el) => { S.ui.open = el.dataset.v; if (S.ui.route !== "agenda") { S.go("agenda"); return false; } return window.innerWidth < 1024 ? "top" : undefined; };
-  A["ag.close"] = () => { S.ui.open = null; S.ui.avisar = null; };
+  A["ag.open"] = (el) => { S.ui.open = el.dataset.v; if (S.ui.route !== "agenda") { S.go("agenda"); return false; } return "top"; };
+  A["ag.notas"] = () => { S.save(); S.toast("Notas guardadas."); return false; };
+  EG.changes["ag.estadoSel"] = (t) => { S.db.appts.find((x) => x.id === t.dataset.a).estado = t.value; S.save(); };
+  A["ag.close"] = () => { S.ui.open = null; S.ui.avisar = null; return "top"; };
   A["ag.avisado"] = () => { setTimeout(() => { S.ui.avisar = null; S.render(); }, 300); return false; };
   A["ag.vista"] = (el) => { S.ui.agendaVista = el.dataset.v; };
   A["ag.week"] = (el) => { const v = +el.dataset.v; S.ui.week = v === 0 ? 0 : S.ui.week + v; };

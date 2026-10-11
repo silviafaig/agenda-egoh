@@ -278,7 +278,14 @@ button.rowitem:hover, .rowitem.click:hover { background: var(--card); cursor: po
 .acard-time b { font-size: 14px; }
 .acard-prendas { display: flex; align-items: center; gap: 10px; }
 .acard-prendas .thumbs span { width: 40px; height: 44px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
-.alist .blockrow { border: 1px dashed var(--line); border-radius: 14px; }
+.alist /* detalle de cita */
+.card.bordered { border: 1px solid var(--line); }
+.dgrid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.dprenda { display: grid; grid-template-columns: 110px 1fr; gap: 16px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.dph { aspect-ratio: 4 / 5; border-radius: 10px; overflow: hidden; background: var(--img); position: relative; display: grid; place-items: center; color: var(--muted); }
+.dph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+@media (min-width: 640px) { .dgrid { grid-template-columns: 1fr 1fr; } .dprenda { grid-template-columns: 140px 1fr; } }
+.blockrow { border: 1px dashed var(--line); border-radius: 14px; }
 .sidebrand { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: 0 12px 14px; }
 .sidebrand .logo { margin: 0 !important; }
 .blockrow { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; background: repeating-linear-gradient(135deg, #fff 0 8px, #faf9f7 8px 16px); }
