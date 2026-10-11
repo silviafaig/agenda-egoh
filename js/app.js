@@ -12,7 +12,9 @@
   const PANEL = ["inicio", "agenda", "clientas", "metricas", "catalogo", "perfil", "horarios", "reglas", "compartir", "integraciones", "configuracion", "ayuda", "mas"];
   EG.PANEL = PANEL;
 
-  S.db = EG.store.load();
+  const R = EG.remote;
+  // Modo nube (etapa 2): los datos llegan de Supabase al arrancar. Modo local: del navegador.
+  S.db = R.on ? { v: 2, settings: EG.defaultSettings(), products: [], appts: [], clientas: [], bloqueos: [] } : EG.store.load();
   S.ui = {
     route: "inicio",
     fromPanel: false,
@@ -29,12 +31,13 @@
 
   S.prod = (id) => S.db.products.find((p) => p.id === id);
   S.save = () => {
+    if (R.on) { R.sync(); return true; }
     const ok = EG.store.save(S.db);
     if (!ok) S.toast("No se pudo guardar: el navegador se quedó sin espacio.");
     return ok;
   };
   S.publicLink = () => location.href.split("#")[0] + "#/reservar";
-  S.citaLink = (a) => location.href.split("#")[0] + "#/cita/" + a.id;
+  S.citaLink = (a) => location.href.split("#")[0] + "#/cita/" + a.id + (a._token ? "." + a._token : "");
 
   let toastTimer = null;
   S.toast = (msg) => {
@@ -51,7 +54,7 @@
     const h = location.hash.replace(/^#\/?/, "").split("?")[0];
     const parts = h.split("/");
     if (parts[0] === "reservar") return "reservar";
-    if (parts[0] === "cita") { S.ui.citaId = parts[1] || null; return "cita"; }
+    if (parts[0] === "cita") { const t = String(parts[1] || "").split("."); S.ui.citaId = t[0] || null; S.ui.citaToken = t[1] || ""; return "cita"; }
     return PANEL.indexOf(parts[0]) >= 0 ? parts[0] : "inicio";
   }
   S.go = (route) => {
@@ -71,10 +74,29 @@
       setTimeout(() => { S.ui.splash = false; S.render({ top: true }); }, 1800);
     }
   }
-  window.addEventListener("hashchange", () => { enterRoute(); S.render({ top: true }); });
+  // En modo nube, antes de mostrar una pantalla se cargan los datos que necesita.
+  S.loading = false;
+  async function ensureData() {
+    if (!R.on) return;
+    const pub = isPublic(S.ui.route);
+    try {
+      if (pub) {
+        if (!R.panel && !R.publicLoaded) { S.loading = true; S.render(); await R.loadPublic(); R.publicLoaded = true; }
+      } else if (!R.panel) {
+        S.loading = true; S.render();
+        const user = await R.session();
+        if (user) await R.loadPanel();
+      }
+    } catch (e) {
+      R.error = /fetch|network/i.test(e.message) ? "No pudimos conectarnos. Revisá tu conexión a internet y probá de nuevo." : e.message;
+    }
+    S.loading = false;
+  }
+  S.ensureData = ensureData;
+  window.addEventListener("hashchange", async () => { enterRoute(); await ensureData(); S.render({ top: true }); });
   // Si otra pestaña del mismo navegador guardó datos, los recargamos para no pisarlos.
   window.addEventListener("storage", (e) => {
-    if (e.key === "agenda-egoh:v1:datos") { S.db = EG.store.load(); S.render(); }
+    if (!R.on && e.key === "agenda-egoh:v1:datos") { S.db = EG.store.load(); S.render(); }
   });
 
   /* ---------- filtros en el lugar (no redibujan, así no se pierde el foco) ---------- */
@@ -99,7 +121,9 @@
     app.querySelectorAll("[data-keepscroll]").forEach((el) => { keep[el.dataset.keepscroll] = [el.scrollLeft, el.scrollTop]; });
     const pub = isPublic(S.ui.route);
     document.body.classList.toggle("is-public", pub);
-    app.innerHTML = pub ? EG.views.publico() : EG.views.panel();
+    app.innerHTML = S.loading ? `<div class="splash"><span class="logo">${EG.esc(String(S.db.settings.nombre || "").toLowerCase())}.</span></div>`
+      : R.on && R.error && !(pub && R.publicLoaded) ? `<main class="pubwrap narrow"><h1>No se pudo cargar</h1><p class="muted">${EG.esc(R.error)}</p><button type="button" class="btn dark" onclick="location.reload()">Reintentar</button></main>`
+      : pub ? EG.views.publico() : R.on && (!R.user || !R.panel || R.recovery) ? EG.views.auth() : EG.views.panel();
     app.querySelectorAll("[data-keepscroll]").forEach((el) => {
       const k = keep[el.dataset.keepscroll];
       if (k) { el.scrollLeft = k[0]; el.scrollTop = k[1]; }
@@ -159,8 +183,9 @@
     if (r !== false) S.render({ top: r === "top" });
   });
 
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
     enterRoute();
+    await ensureData();
     S.render({ top: true });
   });
 })();

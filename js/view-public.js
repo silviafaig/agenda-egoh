@@ -7,6 +7,7 @@
   const U = EG.ui;
   const { esc, money, fechaLarga, DIAS, MESES, icon: I } = EG;
 
+  const R = EG.remote;
   const PASOS = ["Tipo de cita", "Día y horario", "Preselección", "Tus datos", "Resumen"];
   const newBooking = () => ({ tipo: null, fecha: null, hora: null, prendas: [], nombre: "", whatsapp: "", email: "", zona: "", comoCompra: "", queBusca: "" });
   S.ui.booking = newBooking();
@@ -45,7 +46,7 @@
 
   /* ---------- pasos ---------- */
   function stepTipo(s, b) {
-    const portada = s.portada ? EG.store.fotoGet("portada") : "";
+    const portada = EG.imgSrc(s.portada, "portada");
     const opt = (v, ico, titulo, desc) =>
       `<button type="button" class="opt" data-act="pub.type" data-v="${v}" aria-pressed="${b.tipo === v}"><span class="oico">${I(ico, 20)}</span>
         <span><h3>${titulo}</h3><p>${desc}</p></span></button>`;
@@ -189,7 +190,7 @@
         ${blk("Tus datos", 3, `<dl class="kv"><dt>Nombre</dt><dd>${esc(b.nombre)}</dd><dt>WhatsApp</dt><dd class="num">${esc(b.whatsapp)}</dd><dt>Email</dt><dd>${esc(b.email)}</dd>${b.zona ? `<dt>Zona</dt><dd>${esc(b.zona)}</dd>` : ""}<dt>Comprás</dt><dd>${esc(b.comoCompra)}</dd>${b.queBusca ? `<dt>Buscás</dt><dd>${esc(b.queBusca)}</dd>` : ""}</dl>`)}
       </div><div class="stack">${antesDeVenir(s, b.tipo)}
         ${S.ui.formErr ? `<p class="err" role="alert">${esc(S.ui.formErr)}</p>` : ""}
-        <button type="button" class="btn dark block" data-act="pub.confirmar">Confirmar cita</button></div></div>`;
+        <button type="button" class="btn dark block" data-act="pub.confirmar" ${S.ui.busy ? "disabled" : ""}>${S.ui.busy ? "Confirmando…" : "Confirmar cita"}</button></div></div>`;
   }
 
   function confirmacion(a) {
@@ -213,11 +214,21 @@
   /* ---------- página de la cita: reprogramar o cancelar ---------- */
   function citaPage() {
     const s = S.db.settings;
-    const a = S.db.appts.find((x) => x.id === S.ui.citaId);
     const wrap = (h) => top() + `<main class="pubwrap narrow">${h}</main>`;
+    let a;
+    if (R.on) {
+      if (S.ui.citaRemota === undefined) {
+        S.ui.citaRemota = null;
+        R.verCita(S.ui.citaId, S.ui.citaToken || "")
+          .then((d) => { S.ui.citaRemota = d || false; S.render(); })
+          .catch(() => { S.ui.citaRemota = false; S.render(); });
+      }
+      if (S.ui.citaRemota === null) return wrap(`<p class="muted">Cargando tu cita…</p>`);
+      a = S.ui.citaRemota || null;
+    } else a = S.db.appts.find((x) => x.id === S.ui.citaId);
     if (!a) {
       return wrap(`<h1>No encontramos tu cita</h1><p class="muted">Revisá el link o escribinos por WhatsApp.</p>
-        <p class="notice soft">Por ahora las citas se guardan en el navegador del showroom: este link funciona solo en el mismo equipo. Cuando conectemos la base de datos (etapa 2), va a andar desde cualquier celular.</p>
+        ${R.on ? "" : `<p class="notice soft">En esta versión de prueba las citas se guardan en el navegador del showroom: el link funciona solo en el mismo equipo.</p>`}
         <button type="button" class="btn dark" data-act="pub.nueva">Reservar una cita</button>`);
     }
     const c = S.ui.cita || (S.ui.cita = { modo: null, fecha: a.fecha, hora: null });
@@ -343,6 +354,28 @@
       return "top";
     }
     const datos = { nombre: b.nombre.trim(), whatsapp: wa, email: b.email.trim(), zona: b.zona.trim(), comoCompra: b.comoCompra };
+    const prendas = b.prendas.map((i) => ({ id: i.id, nombre: EG.itemName(i, S.prod), talle: i.talle, seLlevo: null }));
+    if (R.on) {
+      if (ui.busy) return false;
+      ui.busy = true;
+      R.reservar(Object.assign({ fecha: b.fecha, hora: b.hora, tipo: b.tipo, queBusca: b.queBusca.trim(), prendas }, datos))
+        .then(async (r) => {
+          ui.busy = false;
+          if (r.error) {
+            await R.refreshOcupados().catch(() => {});
+            b.hora = null; ui.step = 1;
+            ui.slotMsg = r.error === "ocupado" || r.error === "bloqueado" ? "Ese horario se acaba de ocupar. Elegí otro." : "Ese horario ya no está disponible. Elegí otro.";
+          } else {
+            ui.done = Object.assign({ id: r.id, _token: r.token, sala: r.sala, fecha: b.fecha, hora: b.hora, tipo: b.tipo, estado: "confirmada", prendas }, datos);
+            if (R.panel) R.loadPanel().catch(() => {});
+            else R.refreshOcupados().catch(() => {});
+          }
+          S.render({ top: true });
+        })
+        .catch(() => { ui.busy = false; ui.formErr = "No pudimos confirmar la cita. Revisá tu conexión y probá de nuevo."; S.render(); });
+      S.render();
+      return false;
+    }
     const c = EG.upsertClienta(S.db, datos);
     const a = Object.assign({
       id: EG.uid(), fecha: b.fecha, hora: b.hora, tipo: b.tipo, estado: "confirmada", queBusca: b.queBusca.trim(),
@@ -361,6 +394,14 @@
   A["cita.date"] = (el) => { S.ui.cita.fecha = el.dataset.v; S.ui.cita.hora = null; };
   A["cita.time"] = (el) => { S.ui.cita.hora = el.dataset.v; };
   A["cita.cancelar"] = () => {
+    if (R.on) {
+      R.cancelarCita(S.ui.citaId, S.ui.citaToken).then((r) => {
+        if (r && r.ok) { S.ui.citaRemota.estado = "cancelada"; S.ui.cita = null; S.toast("Tu cita quedó cancelada."); }
+        else S.toast("No se pudo cancelar. Escribinos por WhatsApp.");
+        S.render();
+      });
+      return false;
+    }
     const a = S.db.appts.find((x) => x.id === S.ui.citaId);
     a.estado = "cancelada";
     S.ui.cita = null;
@@ -368,6 +409,15 @@
     S.toast("Tu cita quedó cancelada.");
   };
   A["cita.guardar"] = () => {
+    if (R.on) {
+      const a = S.ui.citaRemota, c = S.ui.cita;
+      R.reprogramarCita(a.id, S.ui.citaToken, c.fecha, c.hora).then(async (r) => {
+        if (r && r.ok) { a.fecha = c.fecha; a.hora = c.hora; S.ui.cita = null; S.toast("Listo: tu cita quedó para el " + fechaLarga(a.fecha) + " a las " + a.hora + " hs."); }
+        else { c.hora = null; await R.refreshOcupados().catch(() => {}); S.toast("Ese horario se acaba de ocupar. Elegí otro."); }
+        S.render();
+      });
+      return false;
+    }
     const a = S.db.appts.find((x) => x.id === S.ui.citaId), c = S.ui.cita, s = S.db.settings;
     if (!EG.isSlotFree(s, S.db.appts, c.fecha, c.hora, null, S.db.bloqueos, a.id)) { S.toast("Ese horario se acaba de ocupar. Elegí otro."); c.hora = null; return; }
     a.fecha = c.fecha;
@@ -376,5 +426,5 @@
     S.save();
     S.toast("Listo: tu cita quedó para el " + fechaLarga(a.fecha) + " a las " + a.hora + " hs.");
   };
-  window.addEventListener("hashchange", () => { S.ui.cita = null; });
+  window.addEventListener("hashchange", () => { S.ui.cita = null; S.ui.citaRemota = undefined; });
 })();

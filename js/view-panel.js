@@ -78,7 +78,8 @@
     const hoy = hoyYmd();
     const d = new Date();
     const ahora = EG.toH(d.getHours() * 60 + d.getMinutes());
-    const saludo = "Hola" + (s.saludoNombre ? ", " + esc(s.saludoNombre) : "");
+    const quien = EG.remote.on ? EG.remote.nombre : s.saludoNombre;
+    const saludo = "Hola" + (quien ? ", " + esc(quien) : "");
     const MESES_L = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     const fechaHoy = cap(fechaLarga(hoy).split(" ")[0]) + " " + d.getDate() + " de " + MESES_L[d.getMonth()] + " de " + d.getFullYear();
     const deHoy = activas(S.db.appts.filter((a) => a.fecha === hoy));
@@ -112,9 +113,9 @@
           <div class="row between"><h2>Próximas citas</h2><span class="small muted">${prox.length && prox[0].fecha === hoy ? "Hoy" : ""}</span></div>
           ${prox.length ? `<div class="alist">${prox.map((a) => P.apptCard(a, { fecha: true, estado: false })).join("")}</div>
             <p class="xs muted">${U.plural(prox.length, "cita")} · ${U.plural(pres, "presencial", "presenciales")} · ${U.plural(prox.length - pres, "videollamada")}</p>` : `<p class="empty">No hay citas próximas. Cuando una clienta reserve, aparece acá con las prendas que eligió.</p>`}
-          ${!S.db.appts.length ? `<div class="card stack sm"><h3>¿Querés ver el panel con datos?</h3><p class="small muted">Cargá citas y clientas de ejemplo para probar Agenda, Clientas y Métricas. Las podés borrar después desde Configuración.</p>
+          ${!S.db.appts.length && !EG.remote.on ? `<div class="card stack sm"><h3>¿Querés ver el panel con datos?</h3><p class="small muted">Cargá citas y clientas de ejemplo para probar Agenda, Clientas y Métricas. Las podés borrar después desde Configuración.</p>
             <button type="button" class="btn sm dark" style="align-self:flex-start" data-act="conf.ejemplo">Cargar datos de ejemplo</button></div>` : ""}
-          <p class="notice soft">Etapa 1: las reservas se guardan solo en este navegador. Todavía no compartas el link con clientas; eso se conecta en la etapa 2.</p>
+          ${EG.remote.on ? "" : `<p class="notice soft">Versión de prueba: las reservas se guardan solo en este navegador.</p>`}
         </div><div class="stack">${compartir}${avisosHtml("only-desk")}</div></div></div>`;
   }
 
@@ -334,7 +335,11 @@
   A.nav = (el) => { S.ui.open = null; S.ui.clienta = null; S.go(el.dataset.v || "inicio"); return false; };
   A.verPublica = () => { S.ui.fromPanel = true; S.go("reservar"); return false; };
   A.copiarLink = () => { U.copyToast(S.publicLink(), "Link copiado."); return false; };
-  A.logout = () => { S.toast("Cerrar sesión se activa cuando haya login (etapa 2)."); return false; };
+  A.logout = () => {
+    if (!EG.remote.on) { S.toast("En la versión de prueba no hay sesión."); return false; }
+    EG.remote.logout().then(() => { S.go("inicio"); S.render(); });
+    return false;
+  };
   A["aviso.sinMarcar"] = () => {
     const pend = S.db.appts.filter((a) => a.estado === "confirmada" && a.fecha < hoyYmd()).sort((x, y) => x.fecha.localeCompare(y.fecha));
     S.ui.agendaVista = "lista";

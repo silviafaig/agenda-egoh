@@ -95,8 +95,8 @@
       try {
         const url = await EG.resizeImage(porNombre.get(a.archivo), 640, 0.82);
         const p = S.prod(a.productoId);
-        if (EG.store.fotoSet(p.id, url)) { p.foto = "local"; ok++; }
-        else fallidas.push({ archivo: a.archivo, motivo: "el navegador no tiene espacio para guardarla" });
+        try { p.foto = await EG.guardarFoto(p.id, url); ok++; }
+        catch (e) { fallidas.push({ archivo: a.archivo, motivo: EG.remote.on ? "no se pudo subir" : "el navegador no tiene espacio para guardarla" }); }
       } catch (e) {
         fallidas.push({ archivo: a.archivo, motivo: "no se pudo leer la imagen" });
       }
@@ -130,8 +130,8 @@
       S.db.products.push(p);
     }
     if (e.fotoNueva) {
-      if (EG.store.fotoSet(p.id, e.fotoNueva)) p.foto = "local";
-      else S.toast("La prenda se guardó, pero la foto no entró: el navegador se quedó sin espacio.");
+      EG.guardarFoto(p.id, e.fotoNueva).then((ref) => { p.foto = ref; S.save(); S.render(); })
+        .catch(() => S.toast("La prenda se guardó, pero la foto no se pudo guardar."));
     }
     S.ui.catPanel = p.categoria;
     S.ui.editProd = null;
@@ -143,7 +143,7 @@
   /* ---------- Perfil público ---------- */
   function imgPicker(label, key, act, w) {
     const d = S.ui.draft;
-    const src = d[key + "Nuevo"] || (!d[key + "Quitar"] && S.db.settings[key] ? EG.store.fotoGet(key) : "");
+    const src = d[key + "Nuevo"] || (!d[key + "Quitar"] ? EG.imgSrc(S.db.settings[key], key) : "");
     return `<div class="f"><span>${label}</span><div class="row">${src ? `<img src="${esc(src)}" alt="" style="width:${w}px;max-height:90px;object-fit:${key === "logo" ? "contain" : "cover"};border-radius:12px;background:var(--bg);border:1px solid var(--line)">` : ""}
       <label class="btn sm" style="cursor:pointer">${I("image-plus", 15)}${src ? "Cambiar" : "Subir imagen"}<input class="sr-only" type="file" accept="image/*" data-change="${act}"></label>
       ${src ? `<button type="button" class="btn sm light" data-act="perfil.quitar" data-v="${key}">Quitar</button>` : ""}</div></div>`;
@@ -172,9 +172,9 @@
     if (!d.nombre.trim()) { S.ui.draftErr = "Escribí el nombre del showroom."; return; }
     for (const k of ["logo", "portada"]) {
       if (d[k + "Nuevo"]) {
-        if (EG.store.fotoSet(k, d[k + "Nuevo"])) s[k] = "local";
-        else S.toast("La imagen no entró: el navegador se quedó sin espacio.");
-      } else if (d[k + "Quitar"]) { EG.store.fotoDel(k); s[k] = ""; }
+        EG.guardarFoto(k, d[k + "Nuevo"]).then((ref) => { s[k] = ref; S.save(); S.render(); })
+          .catch(() => S.toast("La imagen no se pudo guardar."));
+      } else if (d[k + "Quitar"]) { if (s[k] === "local") EG.store.fotoDel(k); s[k] = ""; }
     }
     Object.assign(s, { nombre: d.nombre.trim(), direccion: d.direccion.trim(), info: d.info.trim() });
     S.save();
@@ -293,7 +293,7 @@
   P.VISTAS.compartir = () => {
     const link = S.publicLink();
     return `${P.title("Compartir", "Mandá tu agenda por WhatsApp o ponela en Instagram.")}
-      ${wrap(`<p class="notice">Etapa 1: las reservas todavía quedan solo en este navegador. Compartí el link con clientas cuando conectemos la base de datos (etapa 2).</p>
+      ${wrap(`${EG.remote.on ? "" : `<p class="notice">Versión de prueba: las reservas quedan solo en este navegador.</p>`}
         ${sec("Link de la agenda", "", `<div class="row nowrap" style="background:var(--bg);border-radius:999px;padding:6px 6px 6px 14px">${I("link", 15)}<span class="grow ellipsis small">${esc(link)}</span><button type="button" class="btn xs dark" data-act="copiarLink">Copiar</button></div>`)}
         ${sec("Código QR", "Para imprimir en el showroom o subir a una historia.", `<div class="row" style="align-items:flex-end;gap:18px"><div class="qr">${U.qrSvg(link)}</div><button type="button" class="btn sm dark" data-act="qr.descargar">${I("download", 15)}Descargar QR</button></div>`)}
         ${sec("Texto listo para Instagram y WhatsApp", "", `<div class="mail">${esc(textoCompartir())}</div><button type="button" class="btn sm" style="align-self:flex-start" data-act="comp.texto">${I("copy", 15)}Copiar texto</button>`)}`)}`;
@@ -305,13 +305,46 @@
       <p class="small muted">Cada cita va a aparecer en tu calendario de Google, y las videollamadas van a tener link de Meet.</p></section>`)}`;
 
   /* ---------- Configuración ---------- */
-  P.VISTAS.configuracion = () => `${P.title("Configuración")}${wrap(`
-      ${sec("Cuenta", "Se activa cuando haya login (etapa 2).", `<div class="fgrid two"><label class="f">Email<input class="t" type="email" disabled placeholder="tu@email.com"></label><label class="f">Contraseña<input class="t" type="password" disabled placeholder="••••••••"></label></div>`)}
-      ${sec("Personas con acceso", "Invitá a alguien de tu equipo para que vea y edite la agenda. Se activa con el login (etapa 2).", `<div class="rows"><div class="rowitem">${U.avatar(S.db.settings.nombre)}<span class="grow"><span class="rname">Vos</span><span class="rsub">Dueña</span></span><span class="chip">Puede editar</span></div></div>
-        <button type="button" class="btn sm" style="align-self:flex-start" disabled>${I("user-plus", 15)}Invitar</button>`)}
+  P.VISTAS.configuracion = () => {
+    const R = EG.remote;
+    if (!R.on) {
+      return `${P.title("Configuración")}${wrap(`
       ${sec("Datos de prueba", "Para probar el panel sin esperar reservas reales. Todo queda solo en este navegador.", `<div class="row"><button type="button" class="btn sm" data-act="conf.ejemplo">Cargar datos de ejemplo</button>
         <button type="button" class="btn sm danger" data-act="conf.reset">${S.ui.confirmar === "reset" ? "Sí, borrar todo" : "Volver a los datos iniciales"}</button></div>
         ${S.ui.confirmar === "reset" ? `<p class="small muted">Se borran las citas, las clientas, los cambios del catálogo y la configuración de este navegador. Tocá “Sí, borrar todo” para confirmar.</p>` : ""}`)}`)}`;
+    }
+    if (!S.ui.draft) S.ui.draft = { clave: "", invEmail: "", invNombre: "", err: "" };
+    const d = S.ui.draft;
+    const duena = R.rol === "duena";
+    return `${P.title("Configuración")}${wrap(`
+      ${sec("Tu cuenta", "", `<dl class="kv"><dt>Email</dt><dd>${esc(R.user.email)}</dd><dt>Rol</dt><dd>${duena ? "Dueña" : "Puede editar"}</dd></dl>
+        <form class="row nowrap" id="conf-clave" novalidate style="align-items:flex-end"><label class="f grow" for="cf-clave">Contraseña nueva<input class="t" id="cf-clave" type="password" autocomplete="new-password" value="${esc(d.clave)}" data-bind="draft.clave" placeholder="Mínimo 8 caracteres"></label>
+          <button class="btn sm" type="submit">Cambiar</button></form>`)}
+      ${sec("Personas con acceso", duena ? "Sumá a alguien de tu equipo. Después creale el usuario en Supabase (Authentication → Add user) con ese mismo email." : "", `<div class="rows">${R.miembros.map((m) => `<div class="rowitem">${U.avatar(m.nombre || m.email)}<span class="grow"><span class="rname">${esc(m.nombre || m.email)}</span><span class="rsub">${esc(m.email)}</span></span>
+          <span class="chip">${m.rol === "duena" ? "Dueña" : "Puede editar"}</span>${duena && m.rol !== "duena" ? `<button type="button" class="iconbtn sm" data-act="conf.quitar" data-v="${esc(m.email)}" aria-label="Quitar acceso">${I("x", 14)}</button>` : ""}</div>`).join("")}</div>
+        ${duena ? `<form class="fgrid two" id="conf-invitar" novalidate><label class="f" for="cf-inv">Email<input class="t" id="cf-inv" type="email" value="${esc(d.invEmail)}" data-bind="draft.invEmail"></label>
+          <label class="f" for="cf-invn">Nombre<input class="t" id="cf-invn" value="${esc(d.invNombre)}" data-bind="draft.invNombre" placeholder="Ej: Mely"></label>
+          <button class="btn sm" type="submit" style="align-self:flex-start">${I("user-plus", 15)}Sumar</button></form>` : ""}
+        ${d.err ? `<p class="err">${esc(d.err)}</p>` : ""}`)}`)}`;
+  };
+  EG.submits["conf-clave"] = () => {
+    const d = S.ui.draft;
+    if (d.clave.length < 8) { d.err = "La contraseña tiene que tener al menos 8 caracteres."; return; }
+    EG.remote.cambiarClave(d.clave).then(() => { d.clave = ""; d.err = ""; S.toast("Contraseña cambiada."); S.render(); })
+      .catch((e) => { d.err = e.message; S.render(); });
+    return false;
+  };
+  EG.submits["conf-invitar"] = () => {
+    const d = S.ui.draft;
+    if (!/^\S+@\S+\.\S+$/.test(d.invEmail.trim())) { d.err = "Revisá el email."; return; }
+    EG.remote.invitar(d.invEmail.trim(), d.invNombre.trim()).then(() => { d.invEmail = ""; d.invNombre = ""; d.err = ""; S.toast("Listo. Ahora creale el usuario en Supabase."); S.render(); })
+      .catch((e) => { d.err = e.message; S.render(); });
+    return false;
+  };
+  A["conf.quitar"] = (el) => {
+    EG.remote.quitarMiembro(el.dataset.v).then(() => { S.toast("Acceso quitado."); S.render(); }).catch((e) => S.toast(e.message));
+    return false;
+  };
   A["conf.ejemplo"] = () => {
     const s = S.db.settings;
     const fecha = EG.nextDays(s, 1)[0];
