@@ -50,14 +50,33 @@
   EG.toH = function (m) { return pad(Math.floor(m / 60)) + ":" + pad(m % 60); };
 
   /* ---------- disponibilidad ---------- */
-  // Próximos días hábiles (según los días de atención), empezando por hoy.
+  // Feriados y vacaciones: [{ desde, hasta, motivo }] (hasta vacío = un solo día).
+  EG.esFeriado = function (settings, date) {
+    return (settings.feriados || []).some(function (f) { return date >= f.desde && date <= (f.hasta || f.desde); });
+  };
+  // Fechas especiales: un día con otro horario. [{ fecha, franjas: [["10:00","13:00"]] }]
+  EG.fechaEspecial = function (settings, date) {
+    return (settings.fechasEspeciales || []).filter(function (f) { return f.fecha === date; })[0] || null;
+  };
+  EG.diaAbierto = function (settings, date) {
+    if (EG.esFeriado(settings, date)) return false;
+    if (EG.fechaEspecial(settings, date)) return true;
+    return (settings.dias || []).indexOf(EG.parseYmd(date).getDay()) >= 0;
+  };
+  EG.franjasDe = function (settings, date) {
+    var esp = EG.fechaEspecial(settings, date);
+    return esp ? esp.franjas || [] : settings.franjas || [];
+  };
+
+  // Próximos días de atención, empezando por hoy (descuenta feriados, suma fechas especiales).
   EG.nextDays = function (settings, n, from) {
     var out = [];
-    if (!settings.dias || !settings.dias.length) return out;
+    var hayDias = (settings.dias && settings.dias.length) || (settings.fechasEspeciales && settings.fechasEspeciales.length);
+    if (!hayDias) return out;
     var d = from ? new Date(from.getTime()) : new Date();
     d.setHours(0, 0, 0, 0);
     for (var guard = 0; out.length < n && guard < 800; guard++) {
-      if (settings.dias.indexOf(d.getDay()) >= 0) out.push(EG.ymd(d));
+      if (EG.diaAbierto(settings, EG.ymd(d))) out.push(EG.ymd(d));
       d.setDate(d.getDate() + 1);
     }
     return out;
@@ -65,29 +84,41 @@
 
   function activa(a) { return a.estado !== "cancelada"; }
 
+  // Bloqueos del showroom: { fecha, desde, hasta, motivo }. Sin desde/hasta = día completo.
+  EG.bloqueado = function (bloqueos, date, m, dur) {
+    return (bloqueos || []).some(function (b) {
+      if (b.fecha !== date) return false;
+      if (!b.desde || !b.hasta) return true;
+      return EG.toMin(b.desde) < m + dur && m < EG.toMin(b.hasta);
+    });
+  };
+
   // Turnos de un día. Un horario se ocupa una sola vez, sea presencial o videollamada:
   // cualquier cita no cancelada que se superponga lo deja sin disponibilidad.
-  EG.slotsFor = function (settings, appts, date, now) {
+  // También se descuentan bloqueos, feriados y días sin atención.
+  EG.slotsFor = function (settings, appts, date, now, bloqueos, ignorarId) {
     var cur = now || new Date();
     var dur = settings.duracion;
     var hoy = EG.ymd(cur);
     var ahora = cur.getHours() * 60 + cur.getMinutes();
     var out = [];
-    (settings.franjas || []).forEach(function (f) {
+    if (EG.esFeriado(settings, date)) return out;
+    EG.franjasDe(settings, date).forEach(function (f) {
       for (var m = EG.toMin(f[0]); m + dur <= EG.toMin(f[1]); m += dur) {
         var ocupado = appts.some(function (a) {
-          if (a.fecha !== date || !activa(a)) return false;
+          if (a.fecha !== date || !activa(a) || a.id === ignorarId) return false;
           var s = EG.toMin(a.hora);
           return s < m + dur && m < s + dur;
         });
+        var bloq = EG.bloqueado(bloqueos, date, m, dur);
         var pasado = date < hoy || (date === hoy && m <= ahora);
-        out.push({ h: EG.toH(m), off: ocupado || pasado, ocupado: ocupado });
+        out.push({ h: EG.toH(m), off: ocupado || bloq || pasado, ocupado: ocupado, bloqueado: bloq });
       }
     });
     return out;
   };
-  EG.isSlotFree = function (settings, appts, date, hora, now) {
-    return EG.slotsFor(settings, appts, date, now).some(function (s) { return s.h === hora && !s.off; });
+  EG.isSlotFree = function (settings, appts, date, hora, now, bloqueos, ignorarId) {
+    return EG.slotsFor(settings, appts, date, now, bloqueos, ignorarId).some(function (s) { return s.h === hora && !s.off; });
   };
 
   /* ---------- prendas y totales ---------- */
@@ -140,7 +171,7 @@
     if (conPrecio) t += " – " + EG.priceTxt(getProd(it.id));
     return t;
   }
-  EG.msgRecordatorio = function (a, settings, getProd) {
+  EG.msgRecordatorio = function (a, settings, getProd, link) {
     var nombre = a.nombre.split(" ")[0];
     var t = "¡Hola " + nombre + "! Te recordamos tu cita en " + settings.nombre + " el " + EG.fechaLarga(a.fecha) + " a las " + a.hora + " hs.";
     if (a.tipo === "video") t += "\nEs por videollamada. Entrás desde este link: " + EG.videoLink(a);
@@ -148,7 +179,18 @@
     if (a.prendas.length) {
       t += "\n\nTenemos listas las prendas que elegiste:\n" + a.prendas.map(function (i) { return linea(i, getProd, false); }).join("\n");
     }
-    t += "\n\nSi no podés venir, avisanos así liberamos el horario. ¡Gracias!";
+    if (link) t += "\n\nSi necesitás reprogramar o cancelar, entrá acá: " + link;
+    else t += "\n\nSi no podés venir, avisanos así liberamos el horario.";
+    t += "\n¡Gracias!";
+    return t;
+  };
+  EG.msgConfirmacion = function (a, settings, getProd, link) {
+    var nombre = a.nombre.split(" ")[0];
+    var t = "¡Hola " + nombre + "! Te confirmamos tu cita en " + settings.nombre + " el " + EG.fechaLarga(a.fecha) + " a las " + a.hora + " hs.";
+    if (a.tipo === "video") t += "\nEs por videollamada. Entrás desde este link: " + EG.videoLink(a);
+    else t += "\nTe esperamos en " + settings.direccion + ".";
+    if (a.prendas.length) t += "\n\nVamos a tener listas:\n" + a.prendas.map(function (i) { return linea(i, getProd, false); }).join("\n");
+    if (link) t += "\n\nSi necesitás reprogramar o cancelar, entrá acá: " + link;
     return t;
   };
   EG.msgSeguimiento = function (a, settings, getProd) {

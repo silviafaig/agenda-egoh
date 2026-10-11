@@ -28,9 +28,7 @@
         if (!db || typeof db !== "object" || !db.settings || !Array.isArray(db.products) || !Array.isArray(db.appts)) {
           return EG.seed();
         }
-        var def = EG.defaultSettings();
-        Object.keys(def).forEach(function (k) { if (db.settings[k] === undefined) db.settings[k] = def[k]; });
-        return db;
+        return EG.migrate(db);
       },
       save: function (db) {
         try { storage.setItem(KEY, JSON.stringify(db)); return true; } catch (e) { return false; }

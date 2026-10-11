@@ -6,6 +6,7 @@ const path = require("node:path");
 
 require("../js/core.js");
 require("../js/seed.js");
+require("../js/data.js");
 require("../js/store.js");
 const EG = globalThis.EG;
 
@@ -222,4 +223,103 @@ test("store: completa ajustes nuevos que falten en datos viejos", () => {
   const db = EG.createStore(storage, true).load();
   assert.equal(db.settings.duracion, 30);
   assert.equal(db.settings.compraMinima, 40000);
+});
+
+/* ---------- v2: disponibilidad, clientas, métricas ---------- */
+
+test("feriados, fechas especiales y bloqueos se descuentan de los horarios", () => {
+  const s2 = Object.assign({}, settings, {
+    feriados: [{ desde: "2026-10-12", hasta: "", motivo: "Feriado" }, { desde: "2026-10-19", hasta: "2026-10-21", motivo: "Vacaciones" }],
+    fechasEspeciales: [{ fecha: "2026-10-10", franjas: [["10:00", "11:00"]] }]
+  });
+  const desde = new Date(2026, 9, 9, 8, 0); // viernes 9/10
+  assert.deepEqual(EG.nextDays(s2, 4, desde), ["2026-10-09", "2026-10-10", "2026-10-13", "2026-10-14"]);
+  assert.deepEqual(EG.slotsFor(s2, [], "2026-10-10", desde).map((x) => x.h), ["10:00", "10:30"]);
+  assert.equal(EG.slotsFor(s2, [], "2026-10-20", desde).length, 0);
+  const bloqueos = [{ fecha: "2026-10-13", desde: "14:00", hasta: "15:00", motivo: "Médico" }, { fecha: "2026-10-14", desde: "", hasta: "", motivo: "Feria" }];
+  const s13 = EG.slotsFor(s2, [], "2026-10-13", desde, bloqueos);
+  assert.deepEqual(s13.filter((x) => x.off).map((x) => x.h), ["14:00", "14:30"]);
+  assert.ok(EG.slotsFor(s2, [], "2026-10-14", desde, bloqueos).every((x) => x.off && x.bloqueado));
+});
+
+test("reprogramar: la propia cita no ocupa su horario", () => {
+  const c = cita({ id: "z1" });
+  assert.equal(EG.isSlotFree(settings, [c], "2026-10-05", "11:30", new Date(2026, 9, 5, 8, 0), [], "z1"), true);
+});
+
+test("recordatorio con link para reprogramar o cancelar", () => {
+  const m = EG.msgRecordatorio(cita(), settings, () => undefined, "https://x.test/#/cita/a1");
+  assert.match(m, /Si necesitás reprogramar o cancelar, entrá acá: https:\/\/x\.test\/#\/cita\/a1/);
+});
+
+test("migración v1 → v2 crea las clientas desde las citas", () => {
+  const db = { v: 1, settings: { nombre: "EGOH" }, products: EG.seedProducts(), appts: [
+    cita({ id: "a1", email: "c@x.com", comoCompra: "Revendedora", creada: "2026-09-01T10:00:00Z" }),
+    cita({ id: "a2", fecha: "2026-10-12", nombre: "Carla Medina", comoCompra: "Comercio", creada: "2026-10-01T10:00:00Z" }),
+    cita({ id: "a3", whatsapp: "5491155550999", nombre: "Otra" })
+  ] };
+  EG.migrate(db);
+  assert.equal(db.v, 2);
+  assert.equal(db.clientas.length, 2);
+  const carla = EG.clientaPorWa(db, "5491155550101");
+  assert.equal(carla.comoCompra, "Comercio");
+  assert.equal(carla.email, "c@x.com");
+  assert.equal(db.appts[0].clientaId, carla.id);
+  assert.equal(db.appts[0].origen, "clienta");
+  assert.deepEqual(db.settings.feriados, []);
+  assert.equal(EG.migrate(db).clientas.length, 2);
+});
+
+test("ficha de clienta: visitas, prendas llevadas, faltazos y talles", () => {
+  const db = EG.seed();
+  const c = EG.upsertClienta(db, { nombre: "Carla", whatsapp: "5491155550101" });
+  const mk = (id, estado, prendas) => Object.assign(cita({ id, estado, prendas }), { clientaId: c.id });
+  db.appts.push(
+    mk("1", "asistio", [{ id: "bikini-cala-black", talle: "4", seLlevo: true }, { id: "bikini-mare-olive", talle: "4", seLlevo: false }]),
+    mk("2", "asistio", [{ id: "bikini-cala-moka", talle: "5", seLlevo: true }]),
+    mk("3", "no_vino", []),
+    mk("4", "asistio", [])
+  );
+  const st = EG.clientaStats(db, c);
+  assert.equal(st.visitas, 3);
+  assert.equal(st.faltazos, 1);
+  assert.equal(st.elegidas, 3);
+  assert.equal(st.llevadas, 2);
+  assert.equal(st.talles[0], "4");
+  assert.equal(st.frecuente, true);
+});
+
+test("métricas: citas, conversión, prendas en jerarquía y alertas", () => {
+  const db = EG.seed();
+  const g = getProd(db);
+  db.products.find((p) => p.id === "bikini-cala-black").precio = 20000;
+  const pr = (id, talle, seLlevo) => ({ id, talle, seLlevo });
+  db.appts.push(
+    cita({ id: "1", fecha: "2026-10-05", estado: "asistio", prendas: [pr("bikini-cala-black", "3", true), pr("bikini-mare-olive", "4", false)] }),
+    cita({ id: "2", fecha: "2026-10-06", estado: "asistio", tipo: "video", whatsapp: "5491100000002", prendas: [pr("bikini-mare-olive", "4", false)] }),
+    cita({ id: "3", fecha: "2026-10-07", estado: "no_vino", whatsapp: "5491100000003", prendas: [pr("bikini-mare-olive", "3", null)] }),
+    cita({ id: "4", fecha: "2026-10-08", estado: "cancelada", whatsapp: "5491100000004" }),
+    cita({ id: "5", fecha: "2026-09-28", estado: "asistio", prendas: [] })
+  );
+  const m = EG.metricas(db, "2026-10-05", "2026-10-11", g);
+  assert.deepEqual(m.citas, { visitas: 3, confirmadas: 0, asistencias: 2, cancelaciones: 1, faltazos: 1, conversion: 50 });
+  assert.equal(m.montos.vendido, 20000);
+  assert.equal(m.montos.ticket, 20000);
+  assert.equal(m.tipo.video.citas, 1);
+  assert.equal(m.prendas[0].nombre, "Mare");
+  assert.equal(m.prendas[0].colores[0].talles[0].nombre, "4");
+  assert.equal(m.alertas[0].nombre, "Mare Olive");
+  assert.deepEqual(m.clientas, { nuevas: 2, vuelven: 1 });
+  assert.deepEqual(EG.periodoAnterior("2026-10-05", "2026-10-11"), ["2026-09-28", "2026-10-04"]);
+});
+
+test("CSV escapa comas, comillas y fórmulas", () => {
+  assert.equal(EG.toCSV([["a,b", 'di "hola"', "=1+1"], ["x", 2, null]]), '"a,b","di ""hola""",\'=1+1\r\nx,2,');
+});
+
+test("historial de ejemplo usa días de atención", () => {
+  const db = EG.seed();
+  const h = EG.sampleHistory(db.products, db.settings, "2026-10-11");
+  assert.equal(h.length, 12);
+  assert.ok(h.every((a) => EG.diaAbierto(db.settings, a.fecha) && a.fecha < "2026-10-11"));
 });

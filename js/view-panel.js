@@ -1,404 +1,409 @@
-// Panel del showroom: Inicio, Agenda por día, Catálogo y Ajustes.
+// Panel del showroom: estructura (menú lateral / barra inferior), Inicio, Agenda, detalle de cita,
+// y las ventanas de Nueva reserva, Bloquear horario, QR y Nueva clienta.
 (function () {
   "use strict";
   const EG = window.EG;
   const S = EG.S;
   const U = EG.ui;
   const { esc, money, fechaLarga, DIAS, MESES, icon: I } = EG;
+  const P = (EG.panel = {}); // piezas compartidas con las otras vistas del panel
 
-  const publicLink = () => location.href.split("#")[0] + "#/reservar";
   const hoyYmd = () => EG.ymd(new Date());
+  const addDays = (ymd, n) => { const d = EG.parseYmd(ymd); d.setDate(d.getDate() + n); return EG.ymd(d); };
   const activas = (list) => list.filter((a) => a.estado !== "cancelada");
-  const delDia = (d) => S.db.appts.filter((a) => a.fecha === d).sort((x, y) => x.hora.localeCompare(y.hora));
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  P.addDays = addDays;
+  P.cap = cap;
 
-  /* ---------- estructura ---------- */
-  const NAV = [["inicio", "house", "Inicio"], ["agenda", "calendar-days", "Agenda"], ["catalogo", "shirt", "Catálogo"], ["ajustes", "settings", "Ajustes"]];
+  /* ---------- menú ---------- */
+  const MENU = [
+    ["General", [["inicio", "house", "Inicio"], ["agenda", "calendar-days", "Agenda"], ["clientas", "users", "Clientas"], ["metricas", "chart-column", "Métricas"], ["catalogo", "shirt", "Catálogo"]]],
+    ["Mi negocio", [["perfil", "store", "Perfil público"], ["horarios", "clock", "Horarios y disponibilidad"], ["reglas", "scroll-text", "Reglas de compra"], ["compartir", "share-2", "Compartir"], ["integraciones", "plug", "Integraciones"]]],
+    ["Cuenta", [["configuracion", "settings", "Configuración"], ["ayuda", "circle-help", "Ayuda"]]]
+  ];
+  const BOTTOM = [["inicio", "house", "Inicio"], ["agenda", "calendar-days", "Agenda"], ["clientas", "users", "Clientas"], ["mas", "ellipsis", "Más"]];
 
-  function chrome(body) {
-    const s = S.db.settings;
-    return `<header class="header"><button class="brand" type="button" data-act="nav" data-v="inicio"><span class="mark">a</span><b>Agenda Showroom</b></button>
-        <button class="avatar-e" type="button" data-act="nav" data-v="ajustes" aria-label="Ajustes de ${esc(s.nombre)}">${esc(U.inicial(s.nombre))}</button></header>
-      <main class="page">${EG.store.persistent ? "" : `<p class="notice bad" style="margin-bottom:14px">Este navegador no permite guardar datos: lo que cargues se pierde al cerrar la página.</p>`}${body}</main>
-      <nav class="nav" aria-label="Secciones">${NAV.map((n) => `<button type="button" data-act="nav" data-v="${n[0]}" ${S.ui.route === n[0] ? 'aria-current="page"' : ""}>${I(n[1], 22)}<span>${n[2]}</span></button>`).join("")}</nav>`;
+  function menuHtml(skip) {
+    const r = S.ui.route;
+    return `<nav class="menu" aria-label="Menú">${MENU.map((g) => {
+      const items = g[1].filter((it) => !skip || skip.indexOf(it[0]) < 0);
+      return items.length ? `<div class="grp">${g[0]}</div>${items.map((it) =>
+        `<button type="button" data-act="nav" data-v="${it[0]}" ${r === it[0] ? 'aria-current="page"' : ""}>${I(it[1], 18)}<span>${it[2]}</span>${it[0] === "integraciones" ? '<span class="soon">Pronto</span>' : ""}</button>`).join("")}` : "";
+    }).join("")}
+      <button type="button" class="out" data-act="logout">${I("log-out", 18)}<span>Cerrar sesión</span></button></nav>`;
   }
 
-  const resumen = (lista) => {
-    const act = activas(lista);
-    return `<div class="summary"><div class="card"><span class="label">Citas</span><b class="num">${act.length}</b></div>
-      <div class="card"><span class="label">Video</span><b class="num">${act.filter((a) => a.tipo === "video").length}</b></div>
-      <div class="card"><span class="label">Prendas a preparar</span><b class="num">${act.reduce((n, a) => n + a.prendas.length, 0)}</b></div></div>`;
+  function chrome(body) {
+    const s = S.db.settings, r = S.ui.route;
+    const enBottom = BOTTOM.some((b) => b[0] === r);
+    return `<aside class="side">${U.logo(s, "", "nav")}${menuHtml()}</aside>
+      <header class="ptop">${U.logo(s, "", "nav")}<button type="button" class="iconbtn" data-act="verPublica" aria-label="Ver como clienta">${I("external-link", 17)}</button></header>
+      <main class="pmain">${EG.store.persistent ? "" : `<p class="notice bad" style="margin-bottom:14px">Este navegador no permite guardar datos: lo que cargues se pierde al cerrar la página.</p>`}${body}</main>
+      <nav class="bnav" aria-label="Secciones">${BOTTOM.map((b) => `<button type="button" data-act="nav" data-v="${b[0]}" ${r === b[0] || (b[0] === "mas" && !enBottom) ? 'aria-current="page"' : ""}>${I(b[1], 22)}<span>${b[2]}</span></button>`).join("")}</nav>
+      ${S.ui.modal ? modal() : ""}`;
+  }
+
+  P.title = (titulo, sub, acciones) =>
+    `<div class="ptitle"><div><h1>${titulo}</h1>${sub ? `<p class="sub">${sub}</p>` : ""}</div>${acciones ? `<div class="row">${acciones}</div>` : ""}</div>`;
+
+  /* ---------- filas de cita ---------- */
+  P.apptRow = (a, opts) => {
+    const o = opts || {};
+    return `<button type="button" class="rowitem" data-act="ag.open" data-v="${esc(a.id)}" data-s="${esc(a.nombre + " " + a.whatsapp)}" ${S.ui.open === a.id ? 'aria-current="true"' : ""}>
+      <span class="time num">${o.fecha ? `<span class="xs muted" style="display:block;font-weight:400">${DIAS[EG.parseYmd(a.fecha).getDay()]} ${EG.parseYmd(a.fecha).getDate()}</span>` : ""}${esc(a.hora)}</span>
+      ${U.avatar(a.nombre)}<span class="grow"><span class="rname">${esc(a.nombre)}</span>
+      <span class="rsub">${a.tipo === "video" ? I("video", 13) : I("map-pin", 13)}<span>${U.tipoTxt(a, true)}${a.comoCompra ? " · " + esc(a.comoCompra) : ""}</span></span></span>
+      ${a.prendas.length ? U.thumbs(a.prendas, 3) : ""}${U.estadoChip(a)}</button>`;
   };
 
   /* ---------- Inicio ---------- */
   function inicio() {
     const s = S.db.settings;
     const hoy = hoyYmd();
-    const ahora = (() => { const d = new Date(); return EG.toH(d.getHours() * 60 + d.getMinutes()); })();
-    const futuras = activas(S.db.appts)
+    const d = new Date();
+    const ahora = EG.toH(d.getHours() * 60 + d.getMinutes());
+    const saludo = d.getHours() < 13 ? "Buen día" : d.getHours() < 20 ? "Buenas tardes" : "Buenas noches";
+    const deHoy = activas(S.db.appts.filter((a) => a.fecha === hoy));
+    const futuras = S.db.appts
       .filter((a) => a.estado === "confirmada" && (a.fecha > hoy || (a.fecha === hoy && a.hora >= ahora)))
       .sort((x, y) => (x.fecha + x.hora).localeCompare(y.fecha + y.hora));
-    const proximas = futuras.slice(0, 5);
-    const sig = futuras[0];
-    const deHoy = activas(delDia(hoy));
-    const prendasHoy = deHoy.reduce((n, a) => n + a.prendas.length, 0);
-    const kpi = (icono, titulo, valor, detalle) =>
-      `<div class="kpi"><div class="row between nowrap" style="align-items:flex-start"><div><div style="font-size:16px;font-weight:700">${titulo}</div>
-        <div class="small muted">${esc(fechaLarga(hoy))}</div></div><span class="tile">${I(icono, 19)}</span></div>
-        <div class="big num">${valor}</div><p class="small muted">${detalle}</p></div>`;
-    return `<div class="stack" style="gap:18px">
-      <div><div class="kpis" aria-label="Resumen de hoy">
-          ${kpi("calendar-days", "Citas de hoy", deHoy.length, deHoy.filter((a) => a.tipo === "video").length + " por videollamada")}
-          ${kpi("shirt", "Prendas a preparar", prendasHoy, "para las citas de hoy")}
-          ${kpi("clock", "Próximas citas", futuras.length, "confirmadas desde ahora")}
-        </div><div class="dots" aria-hidden="true"><span class="on"></span><span></span><span></span></div></div>
-
-      <div class="card flush">
-        <div class="cardhead"><span class="avatar-e md">${esc(U.inicial(s.nombre))}</span>
-          <div class="grow"><div class="cardtitle">${esc(s.nombre)}</div><div class="status"><i></i>Activa</div></div>
-          <button type="button" class="iconbtn" data-act="nav" data-v="ajustes" aria-label="Ajustes del showroom">${I("settings", 17)}</button></div>
-        <div class="linkrow">${I("link", 16)}<span title="${esc(publicLink())}">${esc(publicLink())}</span>
-          <button type="button" data-act="inicio.copiar" aria-label="Copiar link">${I("copy", 15)}</button></div>
-        <div class="cardpad stack" style="gap:12px">
-          <p class="row muted small nowrap" style="align-items:flex-start">${I("map-pin", 15)}<span>${esc(s.direccion)}</span></p>
-          <div class="nextbar"><div class="label">Próxima cita</div>
-            <b>${sig ? esc(fechaLarga(sig.fecha)) + " " + esc(sig.hora) + " · " + esc(sig.nombre) : "Todavía no hay citas"}</b></div></div>
-        <div class="statsfoot"><div><span>Citas hoy</span><b class="num">${deHoy.length}</b></div><div><span>Prendas a preparar hoy</span><b class="num">${prendasHoy}</b></div></div>
-      </div>
-      <p class="notice">Todavía no compartas este link con clientas: por ahora las reservas se guardan solo en este navegador y no te llegan a vos (eso se conecta en la etapa 2).</p>
-      <button type="button" class="btn primary block" data-act="inicio.verPublica">${I("external-link", 17)}Ver como clienta</button>
-
-      <h2>Próximas citas</h2>
-      ${proximas.length
-        ? `<div class="card flush">${proximas.map((a, i) => `<button type="button" class="rowitem rowbtn" ${i ? "" : 'style="border-top:0"'} data-act="inicio.ver" data-id="${esc(a.id)}" data-d="${esc(a.fecha)}">
-            ${U.avatar(a.nombre)}<span class="grow"><span class="rname" style="display:block">${esc(a.nombre)}</span>
-            <span class="rsub"><span>${esc(fechaLarga(a.fecha))} · ${esc(a.hora)} hs · ${U.tipoTxt(a, true)}</span></span></span>
-            <span class="chip">${a.prendas.length} prenda${a.prendas.length === 1 ? "" : "s"}</span></button>`).join("")}</div>`
-        : `<p class="card muted">No hay citas próximas. Cuando una clienta reserve, aparece acá con las prendas que eligió.</p>`}
-    </div>`;
+    const sinMarcar = S.db.appts.filter((a) => a.estado === "confirmada" && a.fecha < hoy);
+    const sinPrecio = !S.db.products.some((p) => p.precio > 0);
+    const avisos = [];
+    if (sinMarcar.length) avisos.push([I("circle-alert", 17), `${U.plural(sinMarcar.length, "cita")} de días anteriores sin marcar asistencia.`, "aviso.sinMarcar", "Revisar"]);
+    const vidHoy = deHoy.filter((a) => a.tipo === "video" && a.estado === "confirmada").length;
+    if (vidHoy) avisos.push([I("video", 17), `Hoy tenés ${U.plural(vidHoy, "videollamada")}.`, "nav", "Ver", "agenda"]);
+    if (sinPrecio) avisos.push([I("info", 17), "Las prendas todavía no tienen precio: los montos de Métricas se activan al cargarlos.", "nav", "Catálogo", "catalogo"]);
+    const avisosHtml = `<div class="card stack"><h3>Avisos</h3>${avisos.length
+      ? avisos.map((x) => `<div class="row nowrap" style="align-items:flex-start">${x[0]}<span class="grow small">${x[1]}</span><button type="button" class="btn xs" data-act="${x[2]}" data-v="${x[4] || ""}">${x[3]}</button></div>`).join("")
+      : `<p class="small muted">Todo al día.</p>`}</div>`;
+    const link = S.publicLink();
+    const compartir = `<div class="card stack"><h3>Compartí tu agenda</h3><p class="small muted">Las clientas reservan desde este link.</p>
+      <div class="row nowrap" style="background:var(--bg);border-radius:999px;padding:6px 6px 6px 14px">${I("link", 15)}<span class="grow ellipsis small" title="${esc(link)}">${esc(link)}</span>
+        <button type="button" class="btn xs dark" data-act="copiarLink">Copiar</button></div>
+      <div class="row"><button type="button" class="btn sm" data-act="mod.open" data-v="qr">${I("qr-code", 15)}Ver QR</button><button type="button" class="btn sm" data-act="verPublica">${I("external-link", 15)}Ver como clienta</button></div></div>`;
+    return `${P.title(saludo, cap(fechaLarga(hoy)), `<button type="button" class="btn dark sm" data-act="mod.open" data-v="reserva">${I("plus", 15)}Nueva reserva</button>`)}
+      <div class="stack lg">
+        <div class="stats"><div class="stat"><span class="small muted">Citas de hoy</span><b class="num">${deHoy.length}</b></div>
+          <div class="stat"><span class="small muted">Videollamadas</span><b class="num">${deHoy.filter((a) => a.tipo === "video").length}</b></div>
+          <div class="stat"><span class="small muted">Prendas a preparar</span><b class="num">${deHoy.reduce((n, a) => n + a.prendas.length, 0)}</b></div></div>
+        <div class="cols"><div class="stack">
+          <div class="row between"><h2>Próximas citas</h2><button type="button" class="linkbtn" data-act="nav" data-v="agenda">Ver agenda</button></div>
+          ${futuras.length ? `<div class="rows">${futuras.slice(0, 6).map((a) => P.apptRow(a, { fecha: true })).join("")}</div>` : `<p class="empty">No hay citas próximas. Cuando una clienta reserve, aparece acá con las prendas que eligió.</p>`}
+          <p class="notice soft">Etapa 1: las reservas se guardan solo en este navegador. Todavía no compartas el link con clientas; eso se conecta en la etapa 2.</p>
+        </div><div class="stack">${avisosHtml}${compartir}</div></div></div>`;
   }
 
   /* ---------- Agenda ---------- */
-  function agendaDays() {
+  function rango() {
     const hoy = hoyYmd();
-    const limite = new Date(); limite.setDate(limite.getDate() - 14);
-    const set = new Set([hoy].concat(EG.nextDays(S.db.settings, 10)));
-    S.db.appts.forEach((a) => { if (a.fecha >= EG.ymd(limite)) set.add(a.fecha); });
-    return Array.from(set).sort();
+    let desde = S.ui.agDesde || hoy, hasta = S.ui.agHasta || addDays(hoy, 13);
+    const ab = S.ui.open && S.db.appts.find((a) => a.id === S.ui.open);
+    if (ab && ab.fecha < desde) desde = ab.fecha;
+    if (ab && ab.fecha > hasta) hasta = ab.fecha;
+    if (hasta < desde) hasta = desde;
+    return [desde, hasta];
   }
 
-  function detalle(a) {
-    const msg = EG.msgSeguimiento(a, S.db.settings, S.prod);
-    const prendas = a.prendas.length
-      ? a.prendas.map((i, ix) => {
-          const p = S.prod(i.id);
-          const on = (v) => (i.seLlevo === v ? "true" : "false");
-          return `<div class="row" style="flex-wrap:nowrap"><span class="thumbs">${U.thumb(p)}</span>
-            <span class="grow small"><b>${esc(EG.itemName(i, S.prod))}</b><br><span class="muted">Talle ${esc(i.talle)} · <span class="num">${EG.priceTxt(p)}</span></span></span>
-            <button type="button" class="btn sm${i.seLlevo === true ? " primary" : ""}" data-act="agenda.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="1" aria-pressed="${on(true)}">Se llevó</button>
-            <button type="button" class="btn sm${i.seLlevo === false ? " primary" : ""}" data-act="agenda.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="0" aria-pressed="${on(false)}">No</button></div>`;
-        }).join("")
-      : `<p class="small muted">No eligió prendas antes de la cita.</p>`;
-    const estados = [["confirmada", "Confirmada"], ["asistio", "Asistió"], ["no_vino", "No vino"], ["cancelada", "Cancelada"]];
-    return `<div class="stack">
-      ${a.queBusca ? `<div><div class="label">Lo que busca</div><p>${esc(a.queBusca)}</p></div>` : ""}
-      <div class="small"><div class="label">Contacto</div><p class="num">+${esc(a.whatsapp)} · <a href="mailto:${esc(a.email)}">${esc(a.email)}</a></p></div>
-      <div><div class="label">Preselección · marcá qué se llevó</div><div class="stack" style="gap:10px;margin-top:8px">${prendas}</div></div>
-      <label class="f" for="n-${esc(a.id)}">Notas de la visita<textarea class="t" id="n-${esc(a.id)}" data-note="${esc(a.id)}" placeholder="Qué le gustó, qué talle le quedó, qué colores pidió…">${esc(a.notas)}</textarea></label>
-      <div><div class="label">Estado</div><div class="row" style="margin-top:8px">${estados.map((e) =>
-        `<button type="button" class="btn sm${a.estado === e[0] ? " primary" : ""}" data-act="agenda.estado" data-a="${esc(a.id)}" data-v="${e[0]}" aria-pressed="${a.estado === e[0]}">${e[1]}</button>`).join("")}</div></div>
-      ${a.estado === "asistio"
-        ? `<div class="stack"><div class="label">Seguimiento</div><div class="mail small">${esc(msg)}</div>
-            <div class="row"><a class="btn sm primary" href="${esc(EG.waLink(a.whatsapp, msg))}" target="_blank" rel="noopener">${I("message-circle", 16)}Enviar por WhatsApp</a>
-            <button type="button" class="btn sm" data-act="agenda.copiar" data-a="${esc(a.id)}">${I("copy", 16)}Copiar mensaje</button>${S.ui.copied === a.id ? '<span class="small" style="color:var(--ok);font-weight:700">Copiado</span>' : ""}</div></div>`
-        : ""}
-    </div>`;
+  function lista(desde, hasta) {
+    const citas = S.db.appts.filter((a) => a.fecha >= desde && a.fecha <= hasta);
+    const bloqs = S.db.bloqueos.filter((b) => b.fecha >= desde && b.fecha <= hasta);
+    const fechas = Array.from(new Set(citas.map((a) => a.fecha).concat(bloqs.map((b) => b.fecha)))).sort();
+    if (!fechas.length) return `<p class="empty">No hay citas entre esas fechas.</p>`;
+    return `<div class="rows" data-fscope><span hidden data-fempty></span>${fechas.map((f) => {
+      const del = citas.filter((a) => a.fecha === f).sort((x, y) => x.hora.localeCompare(y.hora));
+      const bl = bloqs.filter((b) => b.fecha === f);
+      return `<div class="dayhead"><span>${esc(cap(fechaLarga(f)))}${f === hoyYmd() ? " · hoy" : ""}</span><span class="muted" style="font-weight:400">${U.plural(activas(del).length, "cita")}</span></div>
+        ${bl.map((b) => `<div class="blockrow">${I("ban", 15)}<span class="grow">${b.desde ? esc(b.desde) + " a " + esc(b.hasta) : "Día completo"} · Bloqueado${b.motivo ? " · " + esc(b.motivo) : ""}</span>
+          <button type="button" class="iconbtn sm" data-act="ag.desbloquear" data-v="${esc(b.id)}" aria-label="Quitar bloqueo">${I("x", 14)}</button></div>`).join("")}
+        ${del.map((a) => P.apptRow(a)).join("")}`;
+    }).join("")}</div>`;
   }
 
-  function apptCard(a) {
+  function semana() {
     const s = S.db.settings;
-    const tot = EG.totalOf(a.prendas, S.prod);
-    const priced = a.prendas.length > 0 && EG.allPriced(a.prendas, S.prod);
-    const abierta = S.ui.open === a.id;
-    const msg = EG.msgRecordatorio(a, s, S.prod);
-    return `<article class="card flush"><div class="rowitem"><div class="time num">${esc(a.hora)}</div>${U.avatar(a.nombre)}
-        <div class="grow"><div class="rname">${esc(a.nombre)}</div>
-          <div class="rsub">${a.tipo === "video" ? I("video", 14) : I("map-pin", 14)}<span>${U.tipoTxt(a, true)} · ${esc(a.comoCompra)}</span></div></div></div>
-      <div class="strip"><div class="thumbs">${a.prendas.slice(0, 5).map((i) => U.thumb(S.prod(i.id))).join("")}</div>
-        <span class="small num">${a.prendas.length} prenda${a.prendas.length === 1 ? "" : "s"}${priced ? " · " + money(tot) : ""}</span>
-        ${priced && s.compraMinima > 0 ? (tot >= s.compraMinima ? '<span class="chip ok">Llega al mínimo</span>' : '<span class="chip warn">Bajo el mínimo</span>') : ""}
-        <span style="margin-left:auto">${U.estadoChip(a)}</span></div>
-      <div class="actions">${a.tipo === "video" && a.sala ? `<a class="btn sm" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${I("video", 16)}Abrir videollamada</a>` : ""}
-        <a class="btn sm" href="${esc(EG.waLink(a.whatsapp, msg))}" target="_blank" rel="noopener">${I("message-circle", 16)}Recordatorio por WhatsApp</a>
-        <button type="button" class="btn sm" data-act="agenda.abrir" data-v="${esc(a.id)}" aria-expanded="${abierta}">${abierta ? "Cerrar" : "Ver detalle"}</button></div>
-      ${abierta ? `<div class="cardpad" style="border-top:1px solid var(--line)">${detalle(a)}</div>` : ""}</article>`;
+    const base = new Date(); base.setHours(0, 0, 0, 0);
+    const finde = base.getDay() === 0 || base.getDay() === 6 ? 7 : 0; // sábado o domingo: arranca en la semana que viene
+    base.setDate(base.getDate() - ((base.getDay() + 6) % 7) + finde + S.ui.week * 7); // lunes
+    const dias = [0, 1, 2, 3, 4].map((i) => addDays(EG.ymd(base), i));
+    const horas = new Set();
+    dias.forEach((f) => EG.franjasDe(s, f).forEach((fr) => { for (let m = EG.toMin(fr[0]); m + s.duracion <= EG.toMin(fr[1]); m += s.duracion) horas.add(EG.toH(m)); }));
+    const filas = Array.from(horas).sort();
+    const ahora = new Date();
+    const celda = (f, h) => {
+      const a = S.db.appts.find((x) => x.fecha === f && x.hora === h && x.estado !== "cancelada");
+      if (a) return `<button type="button" class="cell appt${a.estado !== "confirmada" ? " done" : ""}" data-act="ag.open" data-v="${esc(a.id)}">${esc(a.nombre.split(" ")[0])}${a.tipo === "video" ? " · video" : ""}</button>`;
+      if (!EG.diaAbierto(s, f)) return `<span class="cell closed"></span>`;
+      const sl = EG.slotsFor(s, S.db.appts, f, ahora, S.db.bloqueos).find((x) => x.h === h);
+      if (!sl) return `<span class="cell closed"></span>`;
+      if (sl.bloqueado) return `<span class="cell blk">Bloqueado</span>`;
+      if (sl.off) return `<span class="cell closed"></span>`;
+      return `<button type="button" class="cell free" data-act="ag.slot" data-f="${f}" data-h="${h}" aria-label="Reservar ${esc(fechaLarga(f))} ${h}">+ Reservar</button>`;
+    };
+    const d0 = EG.parseYmd(dias[0]), d4 = EG.parseYmd(dias[4]);
+    return `<div class="row between" style="margin-bottom:10px"><div class="row"><button type="button" class="iconbtn sm" data-act="ag.week" data-v="-1" aria-label="Semana anterior">${I("chevron-left", 15)}</button>
+        <b class="small">${d0.getDate()} ${MESES[d0.getMonth()]} – ${d4.getDate()} ${MESES[d4.getMonth()]}</b>
+        <button type="button" class="iconbtn sm" data-act="ag.week" data-v="1" aria-label="Semana siguiente">${I("chevron-right", 15)}</button></div>
+        ${S.ui.week ? `<button type="button" class="linkbtn" data-act="ag.week" data-v="0">Esta semana</button>` : ""}</div>
+      <div class="week" data-keepscroll="week"><table><thead><tr><th></th>${dias.map((f) => { const x = EG.parseYmd(f); return `<th>${DIAS[x.getDay()]} ${x.getDate()}${f === hoyYmd() ? " · hoy" : ""}</th>`; }).join("")}</tr></thead>
+      <tbody>${filas.length ? filas.map((h) => `<tr><td class="num">${h}</td>${dias.map((f) => `<td>${celda(f, h)}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="6" class="muted">Sin horarios configurados.</td></tr>`}</tbody></table></div>`;
   }
 
   function agenda() {
-    const dias = agendaDays();
-    const hoy = hoyYmd();
-    if (!S.ui.day || dias.indexOf(S.ui.day) < 0) S.ui.day = dias.indexOf(hoy) >= 0 ? hoy : dias[0];
-    const lista = delDia(S.ui.day);
-    return `<div class="stack"><div class="days" data-keepscroll="agenda" role="group" aria-label="Día">${dias.map((d) => {
-        const x = EG.parseYmd(d);
-        const n = activas(S.db.appts.filter((a) => a.fecha === d)).length;
-        return `<button type="button" class="day" data-act="agenda.dia" data-v="${d}" aria-pressed="${S.ui.day === d}" aria-label="${esc(fechaLarga(d))}"><span class="small">${DIAS[x.getDay()]}</span><b>${x.getDate()}</b><span class="small daybtn-count">${n ? n + " cita" + (n > 1 ? "s" : "") : "libre"}</span></button>`;
-      }).join("")}</div>
-      <h2>${S.ui.day === hoy ? "Hoy, " : ""}${esc(fechaLarga(S.ui.day))}</h2>${resumen(lista)}
-      ${lista.length ? lista.map(apptCard).join("") : `<p class="card muted">No hay citas este día. Cuando una clienta reserve, aparece acá con las prendas que eligió.</p>`}</div>`;
+    const [desde, hasta] = rango();
+    const abierta = S.ui.open && S.db.appts.find((a) => a.id === S.ui.open);
+    const vista = S.ui.agendaVista;
+    const tools = `<div class="toolbar"><div class="seg" role="group" aria-label="Vista">
+        <button type="button" data-act="ag.vista" data-v="lista" aria-pressed="${vista === "lista"}">${I("list", 14)} Lista</button>
+        <button type="button" data-act="ag.vista" data-v="calendario" aria-pressed="${vista === "calendario"}">${I("calendar-range", 14)} Calendario</button></div>
+      ${vista === "lista" ? `<div class="daterange"><input class="t num" type="date" value="${desde}" data-change="ag.desde" aria-label="Desde"><span class="muted">a</span><input class="t num" type="date" value="${hasta}" data-change="ag.hasta" aria-label="Hasta"></div>
+        <label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar</span><input class="t" type="search" placeholder="Buscar por nombre o teléfono" value="${esc(S.ui.agQ)}" data-bind="agQ" data-filter=".rows .rowitem"></label>` : ""}
+      <button type="button" class="btn sm light" data-act="ag.export">${I("download", 15)}Exportar</button></div>`;
+    return `${P.title("Agenda", "", `<button type="button" class="btn sm" data-act="mod.open" data-v="bloqueo">${I("ban", 15)}Bloquear horario</button>
+        <button type="button" class="btn sm dark" data-act="mod.open" data-v="reserva">${I("plus", 15)}Nueva reserva</button>`)}
+      <div class="split${abierta ? " open" : ""}"><div class="smain">${tools}${vista === "lista" ? lista(desde, hasta) : semana()}</div>
+      ${abierta ? `<aside class="detail" aria-label="Detalle de la cita">${detalle(abierta)}</aside>` : ""}</div>`;
   }
 
-  /* ---------- Catálogo ---------- */
-  function fotoMsg() {
-    const m = S.ui.fotoMsg;
-    if (!m) return "";
-    const lista = (t, arr) => (arr.length ? `<p class="small"><b>${t}</b></p><ul class="picked small">${arr.map((x) => `<li>${esc(x.archivo)} <span class="muted">– ${esc(x.motivo)}</span></li>`).join("")}</ul>` : "");
-    return `<div class="card stack" role="status"><div class="row between"><b>${m.ok ? `Se actualizaron ${m.ok} foto${m.ok === 1 ? "" : "s"}.` : "No se actualizó ninguna foto."}</b>
-      <button type="button" class="btn sm" data-act="cat.cerrarMsg">Cerrar</button></div>
-      ${lista("No se usaron:", m.ignoradas)}${lista("No se pudieron cargar:", m.fallidas)}</div>`;
+  /* ---------- Detalle de cita ---------- */
+  function detalle(a) {
+    const s = S.db.settings;
+    const msgRec = EG.msgRecordatorio(a, s, S.prod, S.citaLink(a));
+    const msgSeg = EG.msgSeguimiento(a, s, S.prod);
+    const c = a.clientaId && S.db.clientas.find((x) => x.id === a.clientaId);
+    const prendas = a.prendas.length
+      ? a.prendas.map((i, ix) => {
+          const p = S.prod(i.id);
+          return `<div class="prenda-row">${U.thumbs([i], 1)}<span class="grow small"><span class="b">${esc(EG.itemName(i, S.prod))}</span><br><span class="muted">Talle ${esc(i.talle)} · <span class="num">${EG.priceTxt(p)}</span></span></span>
+            <div class="pills"><button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="1" aria-pressed="${i.seLlevo === true}">Se llevó</button>
+            <button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="0" aria-pressed="${i.seLlevo === false}">No</button></div></div>`;
+        }).join("")
+      : `<p class="small muted">No eligió prendas antes de la cita.</p>`;
+    return `<div class="row between"><button type="button" class="back only-m" data-act="ag.close">${I("chevron-left", 16)}Volver</button>
+        <button type="button" class="iconbtn sm" data-act="ag.close" aria-label="Cerrar detalle">${I("x", 15)}</button></div>
+      <div class="row nowrap">${U.avatar(a.nombre, "lg")}<div class="grow"><h2>${esc(a.nombre)}</h2>
+        <p class="small muted">${esc(cap(fechaLarga(a.fecha)))} · ${esc(a.hora)} hs · ${U.tipoTxt(a, true)}</p>
+        <div class="row" style="margin-top:4px">${U.estadoChip(a)}${a.origen === "manual" ? '<span class="chip">Cargada a mano</span>' : ""}</div></div></div>
+      <div class="row">${a.estado === "confirmada" ? `<a class="btn sm dark" href="${esc(EG.waLink(a.whatsapp, msgRec))}" target="_blank" rel="noopener">${I("message-circle", 15)}Recordatorio por WhatsApp</a>` : ""}
+        ${a.tipo === "video" && a.sala ? `<a class="btn sm" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${I("video", 15)}Abrir videollamada</a>` : ""}</div>
+      <div class="stack sm"><span class="label">Clienta</span><dl class="kv"><dt>WhatsApp</dt><dd class="num">+${esc(a.whatsapp)}</dd>
+        ${a.email ? `<dt>Email</dt><dd><a href="mailto:${esc(a.email)}">${esc(a.email)}</a></dd>` : ""}${a.zona ? `<dt>Zona</dt><dd>${esc(a.zona)}</dd>` : ""}
+        ${a.comoCompra ? `<dt>Compra</dt><dd>${esc(a.comoCompra)}</dd>` : ""}${a.queBusca ? `<dt>Busca</dt><dd>${esc(a.queBusca)}</dd>` : ""}</dl>
+        ${c ? `<button type="button" class="linkbtn" style="align-self:flex-start" data-act="cl.ver" data-v="${esc(c.id)}">Ver ficha de la clienta</button>` : ""}</div>
+      <div class="stack sm"><span class="label">Preselección · marcá qué se llevó</span><div class="stack" style="gap:10px">${prendas}</div></div>
+      <label class="f" for="n-${esc(a.id)}">Notas de la visita<textarea class="t" id="n-${esc(a.id)}" data-note="${esc(a.id)}" placeholder="Qué le gustó, qué talle le quedó, qué colores pidió…">${esc(a.notas)}</textarea></label>
+      <div class="stack sm"><span class="label">Estado</span><div class="pills">${U.ESTADOS.map((e) =>
+        `<button type="button" class="pill" data-act="ag.estado" data-a="${esc(a.id)}" data-v="${e[0]}" aria-pressed="${a.estado === e[0]}">${e[1]}</button>`).join("")}</div></div>
+      ${a.estado === "asistio"
+        ? `<div class="stack sm"><span class="label">Seguimiento</span><div class="mail">${esc(msgSeg)}</div>
+            <div class="row"><a class="btn sm dark" href="${esc(EG.waLink(a.whatsapp, msgSeg))}" target="_blank" rel="noopener">${I("message-circle", 15)}Enviar por WhatsApp</a>
+            <button type="button" class="btn sm" data-act="ag.copiarSeg" data-a="${esc(a.id)}">${I("copy", 15)}Copiar</button></div></div>`
+        : ""}`;
   }
 
-  function formProd(e) {
-    const src = e.fotoNueva || (e.id ? EG.photoSrc(S.prod(e.id)) : "");
-    return `<form class="card stack" id="cat-form" novalidate><h3>${e.id ? "Editar prenda" : "Nueva prenda"}</h3>
-      <label class="f" for="pf-nombre">Nombre<input class="t" id="pf-nombre" value="${esc(e.nombre)}" data-bind="editProd.nombre" placeholder="Ej: Bikini Cala Black" required></label>
-      <label class="f" for="pf-cat">Categoría<select class="t" id="pf-cat" data-bind="editProd.categoria">${EG.CATEGORIAS.map((c) => `<option${e.categoria === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
-      <label class="f" for="pf-precio">Precio mayorista<input class="t num" id="pf-precio" type="number" inputmode="numeric" min="0" step="100" value="${esc(e.precio)}" data-bind="editProd.precio" placeholder="Vacío = precio a confirmar"></label>
-      <label class="f" for="pf-talles">Talles (separados por coma)<input class="t" id="pf-talles" value="${esc(e.tallesTxt)}" data-bind="editProd.tallesTxt" placeholder="1, 2, 3, 4, 5, 6"></label>
-      <label class="f" for="pf-foto">Foto<input class="t" id="pf-foto" type="file" accept="image/*" data-change="cat.foto"></label>
-      ${src ? `<img src="${esc(src)}" alt="Foto de la prenda" style="width:96px;border-radius:10px;aspect-ratio:4/5;object-fit:cover;object-position:center top">` : ""}
-      ${S.ui.formErr ? `<p class="err" role="alert">${esc(S.ui.formErr)}</p>` : ""}
-      <div class="row"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" data-act="cat.cancelar">Cancelar</button>
-        ${e.id ? `<button class="btn danger" type="button" data-act="cat.borrar">${I("trash-2", 16)}Quitar del catálogo</button>` : ""}</div></form>`;
+  /* ---------- ventanas ---------- */
+  const mf = (id, label, key, type, extra) =>
+    `<label class="f" for="${id}"><span>${label}</span><input class="t" id="${id}" type="${type || "text"}" value="${esc(S.ui.modal[key])}" data-bind="modal.${key}" ${extra || ""}></label>`;
+  const mhead = (titulo) => `<div class="grab"></div><div class="mhead"><h2>${titulo}</h2><button type="button" class="iconbtn sm" data-act="mod.close" aria-label="Cerrar">${I("x", 15)}</button></div>`;
+  const comoSelect = (key, val) => `<label class="f" for="m-${key}">¿Cómo compra?<select class="t" id="m-${key}" data-bind="modal.${key}"><option value="">Sin dato</option>${S.db.settings.opcionesComoCompra.map((k) => `<option${val === k ? " selected" : ""}>${esc(k)}</option>`).join("")}</select></label>`;
+
+  function modalReserva(m) {
+    const s = S.db.settings;
+    const sl = m.fecha ? EG.slotsFor(s, S.db.appts, m.fecha, new Date(), S.db.bloqueos) : [];
+    const cli = m.clientaId && S.db.clientas.find((c) => c.id === m.clientaId);
+    const clientas = S.db.clientas.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return `<form class="modal" id="mod-reserva" novalidate role="dialog" aria-modal="true" aria-label="Nueva reserva">${mhead("Nueva reserva")}
+      <div class="stack sm"><span class="label">Tipo de cita</span><div class="seg"><button type="button" data-act="mod.set" data-k="tipo" data-v="presencial" aria-pressed="${m.tipo === "presencial"}">Presencial</button><button type="button" data-act="mod.set" data-k="tipo" data-v="video" aria-pressed="${m.tipo === "video"}">Videollamada</button></div></div>
+      <label class="f" for="m-fecha">Día<input class="t num" id="m-fecha" type="date" value="${esc(m.fecha)}" data-bind="modal.fecha" data-change="mod.fecha"></label>
+      ${m.fecha ? (sl.length ? `<div class="stack sm"><span class="label">Horario</span><div class="slots">${sl.map((x) => `<button type="button" class="slot num" data-act="mod.set" data-k="hora" data-v="${x.h}" ${x.off ? "disabled" : ""} aria-pressed="${m.hora === x.h}">${x.h}</button>`).join("")}</div></div>` : `<p class="small muted">Ese día no hay atención.</p>`) : ""}
+      <div class="stack sm"><span class="label">Clienta</span>
+        ${cli ? `<div class="row nowrap card" style="padding:10px 12px">${U.avatar(cli.nombre)}<span class="grow"><span class="rname">${esc(cli.nombre)}</span><span class="rsub num">+${esc(cli.whatsapp)}</span></span><button type="button" class="linkbtn" data-act="mod.set" data-k="clientaId" data-v="">Cambiar</button></div>`
+        : `<div class="seg"><button type="button" data-act="mod.set" data-k="modoCli" data-v="buscar" aria-pressed="${m.modoCli === "buscar"}">Buscar clienta</button><button type="button" data-act="mod.set" data-k="modoCli" data-v="nueva" aria-pressed="${m.modoCli === "nueva"}">Nueva clienta</button></div>
+          ${m.modoCli === "buscar"
+            ? `<div class="stack sm" data-fscope><label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar clienta</span><input class="t" type="search" placeholder="Nombre o teléfono" value="${esc(m.cq)}" data-bind="modal.cq" data-filter=".pickbox .rowitem"></label>
+                ${clientas.length ? `<div class="pickbox" data-keepscroll="pickcli">${clientas.map((c) => `<button type="button" class="rowitem" data-act="mod.set" data-k="clientaId" data-v="${esc(c.id)}" data-s="${esc(c.nombre + " " + c.whatsapp + " " + c.email)}">${U.avatar(c.nombre)}<span class="grow"><span class="rname">${esc(c.nombre)}</span><span class="rsub num">+${esc(c.whatsapp)}</span></span></button>`).join("")}</div><p class="small muted" data-fempty hidden>No hay clientas con ese dato. Cargala como nueva.</p>` : `<p class="small muted">Todavía no hay clientas. Cargala como nueva.</p>`}</div>`
+            : `<div class="fgrid two">${mf("m-nombre", "Nombre y apellido", "nombre")}${mf("m-wa", "WhatsApp", "whatsapp", "tel", 'inputmode="tel" placeholder="11 5555 0101"')}${mf("m-email", "Email", "email", "email")}${mf("m-zona", "Zona", "zona", "text", 'placeholder="Ej: Lanús"')}<div class="full">${comoSelect("comoCompra", m.comoCompra)}</div></div>`}`}</div>
+      <div class="stack sm" data-fscope><span class="label">Prendas <span style="text-transform:none;letter-spacing:0">(opcional)${m.prendas.length ? " · " + U.plural(m.prendas.length, "elegida") : ""}</span></span>
+        <label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar prenda</span><input class="t" type="search" placeholder="Buscar prenda" value="${esc(m.pq)}" data-bind="modal.pq" data-filter=".pickbox .rowitem"></label>
+        <div class="pickbox" data-keepscroll="pickprod">${S.db.products.map((p) => { const sel = m.prendas.find((i) => i.id === p.id); return `<div class="rowitem" data-s="${esc(p.nombre)}">${U.thumbs([{ id: p.id }], 1)}<span class="grow small">${esc(p.nombre)}</span>
+          <div class="sizes">${p.talles.map((z) => `<button type="button" class="size" data-act="mod.size" data-p="${esc(p.id)}" data-v="${esc(z)}" aria-pressed="${!!sel && sel.talle === z}" aria-label="${esc(p.nombre)} talle ${esc(z)}">${esc(z)}</button>`).join("")}</div></div>`; }).join("")}</div></div>
+      <label class="f" for="m-notas">Notas<textarea class="t" id="m-notas" data-bind="modal.notas" placeholder="Opcional">${esc(m.notas)}</textarea></label>
+      <label class="check"><input type="checkbox" data-bind="modal.avisar" ${m.avisar ? "checked" : ""}>Avisarle por WhatsApp al guardar</label>
+      ${m.err ? `<p class="err" role="alert">${esc(m.err)}</p>` : ""}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Cancelar</button><button type="submit" class="btn dark">Guardar reserva</button></div></form>`;
   }
 
-  function catalogo() {
-    const lista = S.db.products.filter((p) => p.categoria === S.ui.catPanel);
-    return `<div class="stack"><div class="row between"><h2>Catálogo</h2>
-        <button type="button" class="btn sm primary" data-act="cat.nueva">${I("plus", 16)}Agregar prenda</button></div>
-      <p class="small muted">Las clientas eligen de acá su preselección al reservar.</p>
-      <div class="card stack"><div><b>Cargar fotos en masa</b><p class="small muted">Elegí varias fotos juntas: cada una se asigna a su prenda por el nombre del archivo, con el formato <b>Bikini_Modelo_Color_01.jpg</b> (por ejemplo <i>Bikini_Cala_Black_01.jpg</i>). Se usa la <b>_01</b>, salvo en Reversible Vela Malbec / Black, que usa la <b>_02</b>.</p></div>
-        <label class="btn" style="cursor:pointer;align-self:flex-start">${I("image-plus", 16)}${S.ui.busy ? "Cargando fotos…" : "Elegir fotos"}
-          <input class="sr-only" type="file" accept="image/*" multiple data-change="cat.masivo" ${S.ui.busy ? "disabled" : ""}></label></div>
-      ${fotoMsg()}
-      ${U.cats(S.ui.catPanel, "cat.filtro")}
-      ${S.ui.editProd ? formProd(S.ui.editProd) : ""}
-      ${lista.length
-        ? `<div class="grid">${lista.map((p) => `<div class="prod"><div class="ph">${U.photo(p)}</div><div class="body"><h3>${esc(p.nombre)}</h3>
-            <p class="small num muted">${EG.priceTxt(p)} · ${p.talles.length} talle${p.talles.length === 1 ? "" : "s"}</p>
-            <button type="button" class="btn sm" data-act="cat.editar" data-v="${esc(p.id)}">Editar</button></div></div>`).join("")}</div>`
-        : `<p class="card muted">Todavía no hay prendas en esta categoría. Usá “Agregar prenda” para cargar la primera.</p>`}</div>`;
+  function modalBloqueo(m) {
+    const choque = m.fecha ? activas(S.db.appts.filter((a) => a.fecha === m.fecha && (m.modo === "dia" || (m.desde && m.hasta && EG.toMin(a.hora) < EG.toMin(m.hasta) && EG.toMin(a.hora) + S.db.settings.duracion > EG.toMin(m.desde))))) : [];
+    return `<form class="modal" id="mod-bloqueo" novalidate role="dialog" aria-modal="true" aria-label="Bloquear horario">${mhead("Bloquear horario")}
+      <div class="seg"><button type="button" data-act="mod.set" data-k="modo" data-v="horario" aria-pressed="${m.modo === "horario"}">Un horario</button><button type="button" data-act="mod.set" data-k="modo" data-v="dia" aria-pressed="${m.modo === "dia"}">Día completo</button></div>
+      <div class="fgrid two"><div class="full">${mf("b-fecha", "Día", "fecha", "date", 'data-change="mod.fecha"')}</div>
+        ${m.modo === "horario" ? mf("b-desde", "Desde", "desde", "time", 'data-change="mod.fecha"') + mf("b-hasta", "Hasta", "hasta", "time", 'data-change="mod.fecha"') : ""}
+        <div class="full">${mf("b-motivo", 'Motivo <span class="hint">Lo ves solo vos</span>', "motivo", "text", 'placeholder="Ej: médico, feria, inventario"')}</div></div>
+      ${choque.length ? `<p class="notice">Ya hay ${U.plural(choque.length, "cita")} en ese horario (${choque.map((a) => esc(a.hora + " " + a.nombre.split(" ")[0])).join(", ")}). El bloqueo no las cancela: avisales vos.</p>` : ""}
+      ${m.err ? `<p class="err" role="alert">${esc(m.err)}</p>` : ""}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Cancelar</button><button type="submit" class="btn dark">Bloquear</button></div></form>`;
   }
 
-  /* ---------- Ajustes ---------- */
-  function draftFrom(s) {
-    const f = s.franjas;
-    return {
-      nombre: s.nombre, direccion: s.direccion, info: s.info, dias: s.dias.slice(),
-      f1d: f[0] ? f[0][0] : "", f1h: f[0] ? f[0][1] : "", f2d: f[1] ? f[1][0] : "", f2h: f[1] ? f[1][1] : "",
-      duracion: s.duracion, compraMinima: s.compraMinima, compraMinimaNota: s.compraMinimaNota || ""
-    };
+  function modalQr() {
+    const link = S.publicLink();
+    return `<div class="modal" role="dialog" aria-modal="true" aria-label="Código QR">${mhead("Código QR de tu agenda")}
+      <div class="stack" style="align-items:center"><div class="qr">${U.qrSvg(link)}</div><p class="small muted center" style="overflow-wrap:anywhere">${esc(link)}</p></div>
+      <div class="row" style="justify-content:center"><button type="button" class="btn dark" data-act="qr.descargar">${I("download", 15)}Descargar QR</button><button type="button" class="btn" data-act="copiarLink">${I("copy", 15)}Copiar link</button></div></div>`;
   }
 
-  function ajustes() {
-    if (!S.ui.settingsDraft) S.ui.settingsDraft = draftFrom(S.db.settings);
-    const d = S.ui.settingsDraft;
-    const t = (id, label, key, type, extra) => `<label class="f" for="${id}">${label}<input class="t${type === "number" ? " num" : ""}" id="${id}" type="${type}" value="${esc(d[key])}" data-bind="settingsDraft.${key}" ${extra || ""}></label>`;
-    const seccion = (titulo, desc, cuerpo) => `<div class="card stack" style="gap:16px"><div class="sectionhead"><h3>${titulo}</h3><p>${desc}</p></div>${cuerpo}</div>`;
-    return `<div class="stack" style="gap:16px">
-      <div class="topactions"><button type="button" class="btn" data-act="inicio.verPublica">${I("external-link", 16)}Ver como clienta</button>
-        <button class="btn primary" type="submit" form="aj-form">Guardar cambios</button></div>
-      ${S.ui.settingsErr ? `<p class="notice bad" role="alert">${esc(S.ui.settingsErr)}</p>` : ""}
-      <form class="stack" id="aj-form" novalidate style="gap:16px">
-        ${seccion("Información básica", "Lo que ven las clientas en la página de reserva",
-          t("aj-nombre", "Nombre del showroom", "nombre", "text") + t("aj-dir", "Dirección o zona", "direccion", "text") +
-          `<label class="f" for="aj-info">Información para las clientas<textarea class="t" id="aj-info" data-bind="settingsDraft.info">${esc(d.info)}</textarea></label>`)}
-        ${seccion("Horarios de atención", "Los días y franjas en las que se pueden reservar citas",
-          `<div><div class="label">Días de atención</div><div class="row" style="margin-top:8px">${[1, 2, 3, 4, 5, 6, 0].map((n) =>
-            `<button type="button" class="size" data-act="aj.dia" data-v="${n}" aria-pressed="${d.dias.indexOf(n) >= 0}">${DIAS[n]}</button>`).join("")}</div></div>
-          <div class="grid">${t("aj-f1d", "Mañana desde", "f1d", "time")}${t("aj-f1h", "Mañana hasta", "f1h", "time")}${t("aj-f2d", "Tarde desde", "f2d", "time")}${t("aj-f2h", "Tarde hasta", "f2h", "time")}</div>` +
-          t("aj-dur", "Duración de la cita (minutos)", "duracion", "number", 'min="10" step="5" inputmode="numeric"'))}
-        ${seccion("Compra mínima", "Se le muestra a la clienta al reservar y al elegir prendas",
-          `<div class="grid">${t("aj-min", "Compra mínima", "compraMinima", "number", 'min="0" step="1000" inputmode="numeric"')}${t("aj-nota", "Aclaración", "compraMinimaNota", "text", 'placeholder="Ej: por tiempo limitado"')}</div>`)}
-      </form>
-      <div class="card stack"><div class="sectionhead"><h3>Datos de prueba</h3><p>Para probar el panel sin esperar reservas reales. Todo queda solo en este navegador.</p></div>
-        <div class="row"><button type="button" class="btn sm" data-act="aj.ejemplo">Cargar citas de ejemplo</button>
-          <button type="button" class="btn sm danger" data-act="aj.reset">Volver a los datos iniciales</button></div></div></div>`;
+  function modalClienta(m) {
+    return `<form class="modal" id="mod-clienta" novalidate role="dialog" aria-modal="true" aria-label="Nueva clienta">${mhead("Nueva clienta")}
+      <div class="fgrid two">${mf("c-nombre", "Nombre y apellido", "nombre")}${mf("c-wa", "WhatsApp", "whatsapp", "tel", 'inputmode="tel" placeholder="11 5555 0101"')}${mf("c-email", "Email", "email", "email")}${mf("c-zona", "Zona", "zona", "text", 'placeholder="Ej: Lanús"')}
+        <div class="full">${comoSelect("comoCompra", m.comoCompra)}</div>
+        <label class="f full" for="c-notas">Notas<textarea class="t" id="c-notas" data-bind="modal.notas">${esc(m.notas)}</textarea></label></div>
+      ${m.err ? `<p class="err" role="alert">${esc(m.err)}</p>` : ""}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Cancelar</button><button type="submit" class="btn dark">Guardar clienta</button></div></form>`;
   }
+
+  function modal() {
+    const m = S.ui.modal;
+    const body = m.kind === "reserva" ? modalReserva(m) : m.kind === "bloqueo" ? modalBloqueo(m) : m.kind === "qr" ? modalQr() : m.kind === "clienta" ? modalClienta(m) : "";
+    return `<div class="overlay">${body}</div>`;
+  }
+
+  P.openReserva = (preset) => {
+    const prox = EG.nextDays(S.db.settings, 1)[0] || hoyYmd();
+    S.ui.modal = Object.assign({ kind: "reserva", tipo: "presencial", fecha: prox, hora: null, clientaId: null, modoCli: S.db.clientas.length ? "buscar" : "nueva", cq: "", pq: "",
+      nombre: "", whatsapp: "", email: "", zona: "", comoCompra: "", prendas: [], notas: "", avisar: true, err: "" }, preset || {});
+  };
 
   /* ---------- vista ---------- */
+  const VISTAS = { inicio, agenda };
+  P.VISTAS = VISTAS;
   EG.views.panel = function () {
-    const r = S.ui.route;
-    const body = r === "agenda" ? agenda() : r === "catalogo" ? catalogo() : r === "ajustes" ? ajustes() : inicio();
-    return chrome(body);
+    const v = VISTAS[S.ui.route] || inicio;
+    return chrome(v());
   };
+  VISTAS.mas = () => `${P.title("Más")}<div class="mascard">${menuHtml(["inicio", "agenda", "clientas"])}</div>`;
 
   /* ---------- acciones ---------- */
   const A = EG.actions;
-  A.nav = (el) => { S.go(el.dataset.v); return false; };
-
-  A["inicio.copiar"] = () => {
-    U.copy(publicLink()).then(() => S.toast("Link copiado.")).catch(() => S.toast("No se pudo copiar. Seleccionalo y copialo a mano."));
+  A.nav = (el) => { S.ui.open = null; S.ui.clienta = null; S.go(el.dataset.v || "inicio"); return false; };
+  A.verPublica = () => { S.ui.fromPanel = true; S.go("reservar"); return false; };
+  A.copiarLink = () => { U.copyToast(S.publicLink(), "Link copiado."); return false; };
+  A.logout = () => { S.toast("Cerrar sesión se activa cuando haya login (etapa 2)."); return false; };
+  A["aviso.sinMarcar"] = () => {
+    const pend = S.db.appts.filter((a) => a.estado === "confirmada" && a.fecha < hoyYmd()).sort((x, y) => x.fecha.localeCompare(y.fecha));
+    S.ui.agendaVista = "lista";
+    S.ui.agDesde = pend[0].fecha;
+    S.ui.agHasta = addDays(hoyYmd(), -1);
+    S.ui.open = pend[0].id;
+    S.go("agenda");
     return false;
   };
-  A["inicio.verPublica"] = () => { S.ui.fromPanel = true; S.go("reservar"); return false; };
-  A["inicio.ver"] = (el) => { S.ui.day = el.dataset.d; S.ui.open = el.dataset.id; S.go("agenda"); return false; };
 
-  A["agenda.dia"] = (el) => { S.ui.day = el.dataset.v; S.ui.open = null; };
-  A["agenda.abrir"] = (el) => { S.ui.open = S.ui.open === el.dataset.v ? null : el.dataset.v; };
-  A["agenda.take"] = (el) => {
+  A["ag.open"] = (el) => { S.ui.open = el.dataset.v; if (S.ui.route !== "agenda") { S.go("agenda"); return false; } return window.innerWidth < 1024 ? "top" : undefined; };
+  A["ag.close"] = () => { S.ui.open = null; };
+  A["ag.vista"] = (el) => { S.ui.agendaVista = el.dataset.v; };
+  A["ag.week"] = (el) => { const v = +el.dataset.v; S.ui.week = v === 0 ? 0 : S.ui.week + v; };
+  A["ag.slot"] = (el) => { P.openReserva({ fecha: el.dataset.f, hora: el.dataset.h }); };
+  EG.changes["ag.desde"] = (t) => { S.ui.agDesde = t.value; S.ui.open = null; };
+  EG.changes["ag.hasta"] = (t) => { S.ui.agHasta = t.value; S.ui.open = null; };
+  A["ag.desbloquear"] = (el) => { S.db.bloqueos = S.db.bloqueos.filter((b) => b.id !== el.dataset.v); S.save(); S.toast("Bloqueo quitado."); };
+  A["ag.take"] = (el) => {
     const a = S.db.appts.find((x) => x.id === el.dataset.a);
     const it = a.prendas[+el.dataset.i];
     const val = el.dataset.v === "1";
     it.seLlevo = it.seLlevo === val ? null : val;
     S.save();
   };
-  A["agenda.estado"] = (el) => {
-    S.db.appts.find((x) => x.id === el.dataset.a).estado = el.dataset.v;
-    S.save();
-  };
-  A["agenda.copiar"] = (el) => {
-    const a = S.db.appts.find((x) => x.id === el.dataset.a);
-    U.copy(EG.msgSeguimiento(a, S.db.settings, S.prod))
-      .then(() => { S.ui.copied = a.id; S.render(); })
-      .catch(() => S.toast("No se pudo copiar. Seleccioná el mensaje y copialo a mano."));
+  A["ag.estado"] = (el) => { S.db.appts.find((x) => x.id === el.dataset.a).estado = el.dataset.v; S.save(); };
+  A["ag.copiarSeg"] = (el) => { const a = S.db.appts.find((x) => x.id === el.dataset.a); U.copyToast(EG.msgSeguimiento(a, S.db.settings, S.prod), "Mensaje copiado."); return false; };
+  A["ag.export"] = () => {
+    const [desde, hasta] = rango();
+    const est = Object.fromEntries(U.ESTADOS);
+    const rows = [["Fecha", "Hora", "Tipo", "Estado", "Nombre", "WhatsApp", "Email", "Zona", "Cómo compra", "Prendas", "Se llevó", "Notas", "Origen"]];
+    S.db.appts.filter((a) => a.fecha >= desde && a.fecha <= hasta).sort((x, y) => (x.fecha + x.hora).localeCompare(y.fecha + y.hora)).forEach((a) => {
+      rows.push([a.fecha, a.hora, U.tipoTxt(a, true), est[a.estado], a.nombre, a.whatsapp, a.email, a.zona, a.comoCompra,
+        a.prendas.map((i) => EG.itemName(i, S.prod) + " T" + i.talle).join(" | "), a.prendas.filter((i) => i.seLlevo === true).map((i) => EG.itemName(i, S.prod) + " T" + i.talle).join(" | "), a.notas, a.origen === "manual" ? "Carga manual" : "Clienta"]);
+    });
+    U.download("agenda-" + desde + "-a-" + hasta + ".csv", EG.toCSV(rows));
     return false;
   };
 
-  A["cat.filtro"] = (el) => { S.ui.catPanel = el.dataset.v; };
-  A["cat.nueva"] = () => {
-    S.ui.formErr = "";
-    S.ui.editProd = { id: null, nombre: "", categoria: S.ui.catPanel, precio: "", tallesTxt: S.ui.catPanel === "Bikinis SS27" ? EG.TALLES_BIKINI.join(", ") : "", fotoNueva: "" };
+  /* ventanas */
+  A["mod.open"] = (el) => {
+    const k = el.dataset.v;
+    if (k === "reserva") P.openReserva(el.dataset.c ? { clientaId: el.dataset.c } : null);
+    else if (k === "bloqueo") S.ui.modal = { kind: "bloqueo", modo: "horario", fecha: hoyYmd(), desde: "", hasta: "", motivo: "", err: "" };
+    else if (k === "clienta") S.ui.modal = { kind: "clienta", nombre: "", whatsapp: "", email: "", zona: "", comoCompra: "", notas: "", err: "" };
+    else S.ui.modal = { kind: k };
   };
-  A["cat.editar"] = (el) => {
-    const p = S.prod(el.dataset.v);
-    S.ui.formErr = "";
-    S.ui.editProd = { id: p.id, nombre: p.nombre, categoria: p.categoria, precio: p.precio || "", tallesTxt: p.talles.join(", "), fotoNueva: "" };
-    return "top";
+  A["mod.close"] = () => { S.ui.modal = null; };
+  A["mod.set"] = (el) => {
+    const m = S.ui.modal;
+    m[el.dataset.k] = el.dataset.v;
+    if (el.dataset.k === "fecha") m.hora = null;
+    m.err = "";
   };
-  A["cat.cancelar"] = () => { S.ui.editProd = null; S.ui.formErr = ""; };
-  A["cat.borrar"] = () => {
-    const e = S.ui.editProd;
-    if (!window.confirm("¿Quitar “" + e.nombre + "” del catálogo? Las citas que ya la tenían elegida conservan su nombre.")) return false;
-    S.db.products = S.db.products.filter((p) => p.id !== e.id);
-    EG.store.fotoDel(e.id);
-    S.ui.editProd = null;
-    S.save();
-    S.toast("Prenda quitada del catálogo.");
+  EG.changes["mod.fecha"] = () => { if (S.ui.modal.kind === "reserva") S.ui.modal.hora = null; };
+  A["mod.size"] = (el) => {
+    const m = S.ui.modal, id = el.dataset.p, talle = el.dataset.v;
+    const ex = m.prendas.find((i) => i.id === id);
+    if (ex && ex.talle === talle) m.prendas = m.prendas.filter((i) => i !== ex);
+    else if (ex) ex.talle = talle;
+    else m.prendas.push({ id, nombre: (S.prod(id) || {}).nombre || "", talle, seLlevo: null });
   };
-  A["cat.cerrarMsg"] = () => { S.ui.fotoMsg = null; };
+  A["qr.descargar"] = () => { U.download("qr-agenda-" + EG.slug(S.db.settings.nombre) + ".png", U.qrPng(S.publicLink(), 900)); return false; };
 
-  EG.changes["cat.foto"] = (input) => {
-    const f = input.files[0];
-    if (!f) return false;
-    EG.resizeImage(f, 640, 0.82)
-      .then((url) => { S.ui.editProd.fotoNueva = url; S.render(); })
-      .catch(() => S.toast("No se pudo leer esa imagen."));
-    return false;
-  };
-
-  // Carga masiva: cada archivo se asigna a su prenda por el nombre (ver EG.matchFotos).
-  EG.bulkAssign = async function (files) {
-    const list = Array.from(files);
-    const r = EG.matchFotos(list.map((f) => f.name), S.db.products);
-    const porNombre = new Map(list.map((f) => [f.name, f]));
-    const fallidas = [];
-    let ok = 0;
-    for (const a of r.asignadas) {
-      try {
-        const url = await EG.resizeImage(porNombre.get(a.archivo), 640, 0.82);
-        const p = S.prod(a.productoId);
-        if (EG.store.fotoSet(p.id, url)) { p.foto = "local"; ok++; }
-        else fallidas.push({ archivo: a.archivo, motivo: "el navegador no tiene espacio para guardarla" });
-      } catch (e) {
-        fallidas.push({ archivo: a.archivo, motivo: "no se pudo leer la imagen" });
-      }
-    }
-    S.save();
-    S.ui.busy = false;
-    S.ui.fotoMsg = { ok, ignoradas: r.ignoradas, fallidas };
-    S.render();
-    return S.ui.fotoMsg;
-  };
-  EG.changes["cat.masivo"] = (input) => {
-    if (!input.files.length) return false;
-    const files = Array.from(input.files);
-    S.ui.busy = true;
-    S.ui.fotoMsg = null;
-    S.render();
-    EG.bulkAssign(files);
-    return false;
-  };
-
-  EG.submits["cat-form"] = () => {
-    const e = S.ui.editProd;
-    const fail = (m) => { S.ui.formErr = m; };
-    const nombre = e.nombre.trim();
-    if (!nombre) return fail("Escribí el nombre de la prenda.");
-    const talles = Array.from(new Set(String(e.tallesTxt).split(",").map((x) => x.trim()).filter(Boolean)));
-    const datos = { nombre, categoria: e.categoria, precio: Math.max(0, Math.round(Number(e.precio) || 0)), talles: talles.length ? talles : ["Único"] };
-    let p;
-    if (e.id) { p = S.prod(e.id); Object.assign(p, datos); }
+  EG.submits["mod-reserva"] = () => {
+    const m = S.ui.modal, s = S.db.settings;
+    const fail = (t) => { m.err = t; };
+    if (!m.fecha || !m.hora) return fail("Elegí el día y el horario.");
+    let c;
+    if (m.clientaId) c = S.db.clientas.find((x) => x.id === m.clientaId);
     else {
-      p = Object.assign({ id: "p-" + EG.slug(nombre) + "-" + EG.uid(4), modelo: "", color: "", foto: "", fotoNum: 1 }, datos);
-      S.db.products.push(p);
+      if (m.modoCli === "buscar") return fail("Elegí una clienta o cargala como nueva.");
+      if (m.nombre.trim().length < 2) return fail("Escribí el nombre de la clienta.");
+      const wa = EG.normalizePhone(m.whatsapp);
+      if (!wa) return fail("Revisá el WhatsApp: con código de área, por ejemplo 11 5555 0101.");
+      c = EG.upsertClienta(S.db, { nombre: m.nombre, whatsapp: wa, email: m.email, zona: m.zona, comoCompra: m.comoCompra });
     }
-    if (e.fotoNueva) {
-      if (EG.store.fotoSet(p.id, e.fotoNueva)) p.foto = "local";
-      else S.toast("La prenda se guardó, pero la foto no entró: el navegador se quedó sin espacio.");
-    }
-    S.ui.catPanel = p.categoria;
-    S.ui.editProd = null;
-    S.ui.formErr = "";
+    if (!EG.isSlotFree(s, S.db.appts, m.fecha, m.hora, new Date(), S.db.bloqueos)) return fail("Ese horario ya no está libre. Elegí otro.");
+    const a = {
+      id: EG.uid(), fecha: m.fecha, hora: m.hora, tipo: m.tipo, estado: "confirmada",
+      nombre: c.nombre, whatsapp: c.whatsapp, email: c.email, zona: c.zona, comoCompra: c.comoCompra, queBusca: "",
+      prendas: m.prendas.map((i) => ({ id: i.id, nombre: i.nombre, talle: i.talle, seLlevo: null })),
+      notas: m.notas.trim(), sala: m.tipo === "video" ? "showroom-" + EG.uid(14) : null, creada: new Date().toISOString(),
+      clientaId: c.id, origen: "manual"
+    };
+    S.db.appts.push(a);
     S.save();
-    S.toast("Prenda guardada.");
+    if (m.avisar) window.open(EG.waLink(a.whatsapp, EG.msgConfirmacion(a, s, S.prod, S.citaLink(a))), "_blank", "noopener");
+    S.ui.modal = null;
+    S.ui.open = a.id;
+    S.toast("Reserva guardada.");
+    if (S.ui.route !== "agenda") { S.go("agenda"); return false; }
   };
-
-  A["aj.dia"] = (el) => {
-    const d = S.ui.settingsDraft, n = +el.dataset.v;
-    d.dias = d.dias.indexOf(n) >= 0 ? d.dias.filter((x) => x !== n) : d.dias.concat(n);
-  };
-  A["aj.ejemplo"] = () => {
-    const fecha = EG.nextDays(S.db.settings, 1)[0];
-    if (!fecha) { S.toast("Configurá al menos un día de atención."); return false; }
-    let n = 0;
-    EG.sampleAppts(S.db.products, fecha).forEach((a) => {
-      // now en el año 2000: así no se descartan horarios de hoy que ya pasaron
-      if (EG.slotsFor(S.db.settings, S.db.appts, fecha, new Date(2000, 0, 1)).some((s) => s.h === a.hora && !s.off)) { S.db.appts.push(a); n++; }
-    });
+  EG.submits["mod-bloqueo"] = () => {
+    const m = S.ui.modal;
+    const fail = (t) => { m.err = t; };
+    if (!m.fecha) return fail("Elegí el día.");
+    if (m.modo === "horario" && (!m.desde || !m.hasta || EG.toMin(m.hasta) <= EG.toMin(m.desde))) return fail("Revisá el horario: “hasta” tiene que ser después de “desde”.");
+    S.db.bloqueos.push({ id: "b-" + EG.uid(8), fecha: m.fecha, desde: m.modo === "horario" ? m.desde : "", hasta: m.modo === "horario" ? m.hasta : "", motivo: m.motivo.trim() });
     S.save();
-    S.ui.day = fecha;
-    S.toast(n ? "Se cargaron " + n + " citas de ejemplo (mirá la pestaña Agenda)." : "Esos horarios ya están ocupados.");
+    S.ui.modal = null;
+    S.toast("Horario bloqueado.");
   };
-  A["aj.reset"] = () => {
-    if (!window.confirm("Se borran las citas, los cambios del catálogo y los ajustes de este navegador, y vuelve todo a los datos iniciales. ¿Seguimos?")) return false;
-    EG.store.clearAll();
-    S.db = EG.seed();
+  EG.submits["mod-clienta"] = () => {
+    const m = S.ui.modal;
+    const fail = (t) => { m.err = t; };
+    if (m.nombre.trim().length < 2) return fail("Escribí el nombre.");
+    const wa = EG.normalizePhone(m.whatsapp);
+    if (!wa) return fail("Revisá el WhatsApp: con código de área, por ejemplo 11 5555 0101.");
+    if (EG.clientaPorWa(S.db, wa)) return fail("Ya hay una clienta con ese WhatsApp.");
+    const c = EG.upsertClienta(S.db, { nombre: m.nombre, whatsapp: wa, email: m.email, zona: m.zona, comoCompra: m.comoCompra });
+    c.notas = m.notas.trim();
     S.save();
-    Object.assign(S.ui, { settingsDraft: null, editProd: null, open: null, day: null, fotoMsg: null, settingsErr: "" });
-    S.toast("Listo: volvió todo a los datos iniciales.");
-  };
-
-  EG.submits["aj-form"] = () => {
-    const d = S.ui.settingsDraft;
-    const fail = (m) => { S.ui.settingsErr = m; };
-    if (!d.nombre.trim()) return fail("Escribí el nombre del showroom.");
-    if (!d.dias.length) return fail("Elegí al menos un día de atención.");
-    const franjas = [];
-    for (const par of [[d.f1d, d.f1h], [d.f2d, d.f2h]]) {
-      if (!par[0] && !par[1]) continue;
-      if (!par[0] || !par[1] || EG.toMin(par[1]) <= EG.toMin(par[0])) return fail("Revisá las franjas: la hora de fin tiene que ser posterior a la de inicio.");
-      franjas.push(par);
-    }
-    if (!franjas.length) return fail("Cargá al menos una franja horaria.");
-    const duracion = Math.round(Number(d.duracion));
-    if (!(duracion >= 10)) return fail("La duración de la cita tiene que ser de al menos 10 minutos.");
-    Object.assign(S.db.settings, {
-      nombre: d.nombre.trim(), direccion: d.direccion.trim(), info: d.info.trim(), dias: d.dias.slice().sort(), franjas, duracion,
-      compraMinima: Math.max(0, Math.round(Number(d.compraMinima) || 0)), compraMinimaNota: d.compraMinimaNota.trim()
-    });
-    S.save();
-    S.ui.settingsErr = "";
-    S.ui.settingsDraft = null;
-    S.toast("Cambios guardados.");
+    S.ui.modal = null;
+    S.ui.clienta = c.id;
+    S.toast("Clienta guardada.");
+    return "top";
   };
 })();

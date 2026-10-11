@@ -8,17 +8,23 @@
   EG.submits = {};
   EG.changes = {};
 
-  const PANEL = ["inicio", "agenda", "catalogo", "ajustes"];
+  // Secciones del panel. "mas" es el menú completo en mobile.
+  const PANEL = ["inicio", "agenda", "clientas", "metricas", "catalogo", "perfil", "horarios", "reglas", "compartir", "integraciones", "configuracion", "ayuda", "mas"];
+  EG.PANEL = PANEL;
 
   S.db = EG.store.load();
   S.ui = {
     route: "inicio",
     fromPanel: false,
+    splash: false, splashShown: false,
     // pública
-    step: 0, formErr: "", slotMsg: "", done: null, cat: EG.CATEGORIAS[0],
+    step: 0, formErr: "", slotMsg: "", done: null, cat: EG.CATEGORIAS[0], q: "",
+    citaId: null, cita: null,
     // panel
-    day: null, open: null, copied: null, editProd: null, catPanel: EG.CATEGORIAS[0],
-    settingsDraft: null, settingsErr: "", fotoMsg: null, busy: false
+    open: null, copied: null, editProd: null, catPanel: EG.CATEGORIAS[0],
+    draft: null, draftErr: "", fotoMsg: null, busy: false, modal: null,
+    agendaVista: "lista", agQ: "", agDesde: "", agHasta: "", week: 0,
+    clienta: null, clQ: "", clFiltro: "", metPer: "semana", metDesde: "", metHasta: ""
   };
 
   S.prod = (id) => S.db.products.find((p) => p.id === id);
@@ -27,6 +33,8 @@
     if (!ok) S.toast("No se pudo guardar: el navegador se quedó sin espacio.");
     return ok;
   };
+  S.publicLink = () => location.href.split("#")[0] + "#/reservar";
+  S.citaLink = (a) => location.href.split("#")[0] + "#/cita/" + a.id;
 
   let toastTimer = null;
   S.toast = (msg) => {
@@ -38,39 +46,66 @@
   };
 
   /* ---------- ruteo ---------- */
+  const isPublic = (r) => r === "reservar" || r === "cita";
   function routeFromHash() {
     const h = location.hash.replace(/^#\/?/, "").split("?")[0];
-    if (h === "reservar") return "reservar";
-    return PANEL.indexOf(h) >= 0 ? h : "inicio";
+    const parts = h.split("/");
+    if (parts[0] === "reservar") return "reservar";
+    if (parts[0] === "cita") { S.ui.citaId = parts[1] || null; return "cita"; }
+    return PANEL.indexOf(parts[0]) >= 0 ? parts[0] : "inicio";
   }
   S.go = (route) => {
     if (location.hash === "#/" + route) { S.ui.route = route; S.render({ top: true }); }
     else location.hash = "#/" + route;
   };
-  window.addEventListener("hashchange", () => {
+  function enterRoute() {
     S.ui.route = routeFromHash();
     S.ui.editProd = null;
-    S.ui.settingsDraft = null;
-    S.render({ top: true });
-  });
+    S.ui.draft = null;
+    S.ui.draftErr = "";
+    S.ui.modal = null;
+    if (S.ui.route === "reservar" && !S.ui.splashShown) {
+      S.ui.splash = true;
+      S.ui.splashShown = true;
+      setTimeout(() => { S.ui.splash = false; S.render({ top: true }); }, 1800);
+    }
+  }
+  window.addEventListener("hashchange", () => { enterRoute(); S.render({ top: true }); });
   // Si otra pestaña del mismo navegador guardó datos, los recargamos para no pisarlos.
   window.addEventListener("storage", (e) => {
     if (e.key === "agenda-egoh:v1:datos") { S.db = EG.store.load(); S.render(); }
   });
+
+  /* ---------- filtros en el lugar (no redibujan, así no se pierde el foco) ---------- */
+  function applyFilter(input) {
+    const q = EG.normName(input.value);
+    const scope = input.closest("[data-fscope]") || document;
+    let visibles = 0;
+    scope.querySelectorAll(input.dataset.filter).forEach((el) => {
+      const ok = !q || EG.normName(el.dataset.s || el.textContent).indexOf(q) >= 0;
+      el.hidden = !ok;
+      if (ok) visibles++;
+    });
+    const empty = scope.querySelector("[data-fempty]");
+    if (empty) empty.hidden = visibles > 0;
+  }
 
   /* ---------- render ---------- */
   S.render = (opts) => {
     const app = document.getElementById("app");
     const y = window.scrollY;
     const keep = {};
-    app.querySelectorAll("[data-keepscroll]").forEach((el) => { keep[el.dataset.keepscroll] = el.scrollLeft; });
-    document.body.classList.toggle("is-public", S.ui.route === "reservar");
-    app.innerHTML = S.ui.route === "reservar" ? EG.views.publico() : EG.views.panel();
+    app.querySelectorAll("[data-keepscroll]").forEach((el) => { keep[el.dataset.keepscroll] = [el.scrollLeft, el.scrollTop]; });
+    const pub = isPublic(S.ui.route);
+    document.body.classList.toggle("is-public", pub);
+    app.innerHTML = pub ? EG.views.publico() : EG.views.panel();
     app.querySelectorAll("[data-keepscroll]").forEach((el) => {
-      if (keep[el.dataset.keepscroll] !== undefined) el.scrollLeft = keep[el.dataset.keepscroll];
+      const k = keep[el.dataset.keepscroll];
+      if (k) { el.scrollLeft = k[0]; el.scrollTop = k[1]; }
     });
+    app.querySelectorAll("input[data-filter]").forEach((el) => { if (el.value) applyFilter(el); });
     window.scrollTo(0, opts && opts.top ? 0 : y);
-    document.title = S.ui.route === "reservar" ? S.db.settings.nombre + " – Reservá tu visita" : "Agenda Showroom";
+    document.title = pub ? S.db.settings.nombre + " · Reservá tu cita" : "Agenda Showroom · " + S.db.settings.nombre;
   };
 
   /* ---------- eventos ---------- */
@@ -80,6 +115,7 @@
     obj[parts[parts.length - 1]] = value;
   }
   document.addEventListener("click", (e) => {
+    if (e.target.classList && e.target.classList.contains("overlay")) { S.ui.modal = null; S.render(); return; }
     const el = e.target.closest("[data-act]");
     if (!el || el.disabled) return;
     const fn = EG.actions[el.dataset.act];
@@ -88,13 +124,9 @@
     if (r === false) return;
     S.render({ top: r === "top" });
   });
-  // Puntos de los indicadores deslizables (se actualizan sin redibujar la pantalla).
-  document.addEventListener("scroll", (e) => {
-    const el = e.target;
-    if (!el.classList || !el.classList.contains("kpis") || !el.firstElementChild) return;
-    const i = Math.round(el.scrollLeft / (el.firstElementChild.offsetWidth + 14));
-    el.parentNode.querySelectorAll(".dots span").forEach((d, k) => d.classList.toggle("on", k === i));
-  }, true);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && S.ui.modal) { S.ui.modal = null; S.render(); }
+  });
   document.addEventListener("input", (e) => {
     const t = e.target;
     if (t.dataset.note) {
@@ -102,11 +134,19 @@
       if (a) { a.notas = t.value; S.save(); }
       return;
     }
+    if (t.dataset.cnote) {
+      const c = S.db.clientas.find((x) => x.id === t.dataset.cnote);
+      if (c) { c.notas = t.value; S.save(); }
+      return;
+    }
     if (t.dataset.bind) setPath(S.ui, t.dataset.bind, t.type === "checkbox" ? t.checked : t.value);
+    if (t.dataset.filter) applyFilter(t);
   });
   document.addEventListener("change", (e) => {
     const t = e.target;
-    if (t.dataset.bind && t.tagName === "SELECT") setPath(S.ui, t.dataset.bind, t.value);
+    if (t.dataset.bind && (t.tagName === "SELECT" || t.type === "checkbox" || t.type === "date" || t.type === "time")) {
+      setPath(S.ui, t.dataset.bind, t.type === "checkbox" ? t.checked : t.value);
+    }
     const fn = t.dataset.change && EG.changes[t.dataset.change];
     if (fn && fn(t) !== false) S.render();
   });
@@ -119,7 +159,7 @@
   });
 
   document.addEventListener("DOMContentLoaded", () => {
-    S.ui.route = routeFromHash();
+    enterRoute();
     S.render({ top: true });
   });
 })();
