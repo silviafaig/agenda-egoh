@@ -204,7 +204,7 @@
         : `<h3 class="row">${I("map-pin", 16)}Te esperamos en</h3><p class="small">${esc(s.direccion)}</p>
            <a class="btn dark sm" style="align-self:flex-start" href="${esc(U.mapsLink(s.direccion))}" target="_blank" rel="noopener">${I("navigation", 15)}Cómo llegar</a>`}</div>
       ${a.prendas.length ? `<div class="sumblock"><h3>Vamos a tener listas</h3><ul class="list small">${a.prendas.map((i) => `<li>${esc(EG.itemName(i, S.prod))} · talle ${esc(i.talle)}</li>`).join("")}</ul></div>` : ""}
-      <p class="small muted center">Antes de la cita te escribimos por WhatsApp. Ahí vas a tener un link por si necesitás reprogramar o cancelar.</p>
+      <p class="small muted center">${R.mails && a.email ? "Te mandamos la confirmación a tu mail, con un link por si necesitás reprogramar o cancelar. " : ""}Antes de la cita te escribimos por WhatsApp${R.mails && a.email ? "." : ", con un link por si necesitás reprogramar o cancelar."}</p>
       <div class="row" style="justify-content:center">${S.ui.fromPanel ? `<button type="button" class="btn dark" data-act="pub.seePanel">Ver la cita en el panel</button>` : ""}
         <button type="button" class="btn" data-act="pub.restart">Hacer otra reserva</button></div></div>`;
   }
@@ -363,6 +363,7 @@
             b.hora = null; ui.step = 1;
             ui.slotMsg = r.error === "ocupado" || r.error === "bloqueado" ? "Ese horario se acaba de ocupar. Elegí otro." : "Ese horario ya no está disponible. Elegí otro.";
           } else {
+            R.notify("reserva", r.id, r.token);
             ui.done = Object.assign({ id: r.id, _token: r.token, sala: r.sala, fecha: b.fecha, hora: b.hora, tipo: b.tipo, estado: "confirmada", prendas }, datos);
             if (R.panel) R.loadPanel().catch(() => {});
             else R.refreshOcupados().catch(() => {});
@@ -393,7 +394,7 @@
   A["cita.cancelar"] = () => {
     if (R.on) {
       R.cancelarCita(S.ui.citaId, S.ui.citaToken).then((r) => {
-        if (r && r.ok) { S.ui.citaRemota.estado = "cancelada"; S.ui.cita = null; S.toast("Tu cita quedó cancelada."); }
+        if (r && r.ok) { R.notify("cambio", S.ui.citaId, S.ui.citaToken); S.ui.citaRemota.estado = "cancelada"; S.ui.cita = null; S.toast("Tu cita quedó cancelada."); }
         else S.toast("No se pudo cancelar. Escribinos por WhatsApp.");
         S.render();
       });
@@ -409,7 +410,7 @@
     if (R.on) {
       const a = S.ui.citaRemota, c = S.ui.cita;
       R.reprogramarCita(a.id, S.ui.citaToken, c.fecha, c.hora).then(async (r) => {
-        if (r && r.ok) { a.fecha = c.fecha; a.hora = c.hora; S.ui.cita = null; S.toast("Listo: tu cita quedó para el " + fechaLarga(a.fecha) + " a las " + a.hora + " hs."); }
+        if (r && r.ok) { R.notify("cambio", a.id, S.ui.citaToken); a.fecha = c.fecha; a.hora = c.hora; S.ui.cita = null; S.toast("Listo: tu cita quedó para el " + fechaLarga(a.fecha) + " a las " + a.hora + " hs."); }
         else { c.hora = null; await R.refreshOcupados().catch(() => {}); S.toast("Ese horario se acaba de ocupar. Elegí otro."); }
         S.render();
       });

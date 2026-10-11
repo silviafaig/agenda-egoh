@@ -164,6 +164,14 @@
   R.cancelarCita = async (id, token) => (await sb.rpc("cancelar_cita", { p_id: id, p_token: token })).data;
   R.reprogramarCita = async (id, token, fecha, hora) => (await sb.rpc("reprogramar_cita", { p_id: id, p_token: token, p_fecha: fecha, p_hora: hora })).data;
 
+  /* ---------- mails (Apps Script) ---------- */
+  R.mails = !!cfg.avisosUrl;
+  R.notify = function (tipo, id, token) {
+    if (!cfg.avisosUrl || !id || !token) return;
+    // no-cors: el navegador no espera la respuesta; el script valida id + token antes de mandar nada.
+    fetch(cfg.avisosUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ tipo, id, token }) }).catch(() => {});
+  };
+
   /* ---------- sesión ---------- */
   R.session = async function () {
     const { data } = await sb.auth.getSession();
