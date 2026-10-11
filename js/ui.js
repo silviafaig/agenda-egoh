@@ -40,7 +40,7 @@
   U.ESTADOS = [["confirmada", "Confirmada"], ["asistio", "Asistió"], ["no_vino", "No vino"], ["cancelada", "Cancelada"]];
   U.estadoChip = (a) =>
     ({
-      confirmada: '<span class="chip">Confirmada</span>',
+      confirmada: '<span class="chip accent">Confirmada</span>',
       asistio: '<span class="chip ok">Asistió</span>',
       no_vino: '<span class="chip warn">No vino</span>',
       cancelada: '<span class="chip bad">Cancelada</span>'

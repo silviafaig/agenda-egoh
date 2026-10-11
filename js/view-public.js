@@ -41,6 +41,8 @@
       <h1>${titulo}</h1>${sub ? `<p class="muted">${sub}</p>` : ""}</div>`;
   }
 
+  const P1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+
   /* ---------- pasos ---------- */
   function stepTipo(s, b) {
     const portada = s.portada ? EG.store.fotoGet("portada") : "";
@@ -57,7 +59,7 @@
         ${opt("presencial", "map-pin", "Visita al showroom", esc(s.duracion) + " min · Ves y probás las prendas en persona" + (barrio(s) ? " · " + esc(barrio(s)) : "") + ".")}
         ${opt("video", "video", "Videollamada", esc(s.duracion) + " min · Te mostramos las prendas en vivo, desde donde estés.")}
       </div>
-      <button type="button" class="btn dark block" data-act="pub.next" ${b.tipo ? "" : "disabled"}>Continuar</button>`;
+      <button type="button" class="btn dark block" data-act="pub.next" ${b.tipo ? "" : "disabled"}>Elegir día y horario</button>`;
   }
 
   function slotsHtml(s, fecha, sel, act, ignorarId) {
@@ -93,7 +95,7 @@
       ${S.ui.slotMsg ? `<p class="notice bad" role="alert">${esc(S.ui.slotMsg)}</p>` : ""}
       <div class="fecha2"><div class="stack"><h3>Día</h3>${daysHtml(s, b.fecha, "pub.date")}</div>
         <div class="stack"><h3>Horario · <span class="muted" style="font-weight:400">${esc(fechaLarga(b.fecha))}</span></h3>${slotsHtml(s, b.fecha, b.hora, "pub.time")}</div></div>
-      <button type="button" class="btn dark block" data-act="pub.next" ${b.hora ? "" : "disabled"}>Continuar</button>`;
+      <button type="button" class="btn dark block" data-act="pub.next" ${b.hora ? "" : "disabled"}>Elegir prendas</button>`;
   }
 
   function prodCard(p, b) {
@@ -126,10 +128,10 @@
             <button type="button" class="iconbtn sm" data-act="pub.quitar" data-p="${esc(i.id)}" aria-label="Quitar ${esc(EG.itemName(i, S.prod))}">${I("x", 14)}</button></div>`).join("")}</div>`
         : `<p class="small muted">Tocá un talle para sumar una prenda.</p>`}
       <div class="divider"></div>${totales()}
-      <button type="button" class="btn dark block" data-act="pub.next">${b.prendas.length ? "Continuar" : "Seguir sin elegir"}</button>`;
+      <button type="button" class="btn dark block" data-act="pub.next">${b.prendas.length ? "Seguir" : "Seguir sin elegir"}</button>`;
   }
   function stickyInner() {
-    return totales() + `<button type="button" class="btn dark block" data-act="pub.next">${S.ui.booking.prendas.length ? "Continuar" : "Seguir sin elegir"}</button>`;
+    return totales() + `<button type="button" class="btn dark block" data-act="pub.next">${S.ui.booking.prendas.length ? "Seguir" : "Seguir sin elegir"}</button>`;
   }
 
   function stepPrendas(s, b) {
@@ -177,12 +179,12 @@
   function stepResumen(s, b) {
     const n = b.prendas.length;
     const priced = n > 0 && EG.allPriced(b.prendas, S.prod);
-    const blk = (titulo, paso, cuerpo) => `<div class="sumblock"><div class="cardhead"><h3>${titulo}</h3><button type="button" class="linkbtn" data-act="pub.goto" data-v="${paso}">Editar</button></div>${cuerpo}</div>`;
+    const blk = (titulo, paso, cuerpo) => `<div class="sumblock white"><div class="cardhead"><h3>${titulo}</h3><button type="button" class="linkbtn" data-act="pub.goto" data-v="${paso}">Editar</button></div>${cuerpo}</div>`;
     return `${head(4, "Revisá tu cita")}
       <div class="resumen2"><div class="stack">
-        ${blk("Tu cita", 1, `<dl class="kv"><dt>Tipo</dt><dd>${U.tipoTxt(b)}</dd><dt>Día</dt><dd>${esc(fechaLarga(b.fecha))}</dd><dt>Hora</dt><dd>${esc(b.hora)} hs</dd></dl>`)}
+        ${blk("Tu cita", 1, `<dl class="kv"><dt>Tipo</dt><dd>${U.tipoTxt(b)}</dd><dt>Cuándo</dt><dd>${esc(P1(fechaLarga(b.fecha)))}, ${esc(b.hora)} hs</dd>${b.tipo === "presencial" ? `<dt>Dónde</dt><dd>${esc(s.direccion.split(",")[0])}</dd>` : ""}</dl>`)}
         ${blk("Prendas", 2, n
-          ? `<ul class="list small">${b.prendas.map((i) => `<li>${esc(EG.itemName(i, S.prod))} · talle ${esc(i.talle)}</li>`).join("")}</ul>${priced ? `<p class="small"><b>Total: <span class="num">${money(EG.totalOf(b.prendas, S.prod))}</span></b></p>` : ""}`
+          ? `<div class="stack sm">${b.prendas.map((i) => `<div class="pickrow">${U.thumbs([i], 1)}<span class="grow">${esc(EG.itemName(i, S.prod))}<br><span class="muted xs">Talle ${esc(i.talle)} · ${EG.priceTxt(S.prod(i.id))}</span></span></div>`).join("")}</div>${priced ? `<p class="small"><b>Total: <span class="num">${money(EG.totalOf(b.prendas, S.prod))}</span></b></p>` : ""}`
           : `<p class="small muted">Sin preselección: elegís en la cita.</p>`)}
         ${blk("Tus datos", 3, `<dl class="kv"><dt>Nombre</dt><dd>${esc(b.nombre)}</dd><dt>WhatsApp</dt><dd class="num">${esc(b.whatsapp)}</dd><dt>Email</dt><dd>${esc(b.email)}</dd>${b.zona ? `<dt>Zona</dt><dd>${esc(b.zona)}</dd>` : ""}<dt>Comprás</dt><dd>${esc(b.comoCompra)}</dd>${b.queBusca ? `<dt>Buscás</dt><dd>${esc(b.queBusca)}</dd>` : ""}</dl>`)}
       </div><div class="stack">${antesDeVenir(s, b.tipo)}

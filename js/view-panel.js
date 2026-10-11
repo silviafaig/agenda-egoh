@@ -36,15 +36,31 @@
   function chrome(body) {
     const s = S.db.settings, r = S.ui.route;
     const enBottom = BOTTOM.some((b) => b[0] === r);
-    return `<aside class="side">${U.logo(s, "", "nav")}${menuHtml()}</aside>
+    return `<aside class="side"><div class="sidebrand">${U.logo(s, "", "nav")}<span class="xs muted">Panel showroom</span></div>${menuHtml()}</aside>
       <header class="ptop">${U.logo(s, "", "nav")}<button type="button" class="iconbtn" data-act="verPublica" aria-label="Ver como clienta">${I("external-link", 17)}</button></header>
       <main class="pmain">${EG.store.persistent ? "" : `<p class="notice bad" style="margin-bottom:14px">Este navegador no permite guardar datos: lo que cargues se pierde al cerrar la página.</p>`}${body}</main>
       <nav class="bnav" aria-label="Secciones">${BOTTOM.map((b) => `<button type="button" data-act="nav" data-v="${b[0]}" ${r === b[0] || (b[0] === "mas" && !enBottom) ? 'aria-current="page"' : ""}>${I(b[1], 22)}<span>${b[2]}</span></button>`).join("")}</nav>
       ${S.ui.modal ? modal() : ""}`;
   }
 
+  // Etiqueta chica arriba del título, como en Figma.
+  const EYEBROW = { inicio: "Inicio", agenda: "Agenda", clientas: "Clientas", metricas: "Métricas", catalogo: "Catálogo",
+    perfil: "Mi negocio", horarios: "Mi negocio", reglas: "Mi negocio", compartir: "Mi negocio", integraciones: "Mi negocio",
+    configuracion: "Cuenta", ayuda: "Cuenta", mas: "Menú" };
   P.title = (titulo, sub, acciones) =>
-    `<div class="ptitle"><div><h1>${titulo}</h1>${sub ? `<p class="sub">${sub}</p>` : ""}</div>${acciones ? `<div class="row">${acciones}</div>` : ""}</div>`;
+    `<div class="ptitle"><div><span class="label">${EYEBROW[S.ui.route] || ""}</span><h1>${titulo}</h1>${sub ? `<p class="sub">${sub}</p>` : ""}</div>${acciones ? `<div class="row">${acciones}</div>` : ""}</div>`;
+
+  /* ---------- tarjeta de cita ---------- */
+  P.apptCard = (a, opts) => {
+    const o = opts || {};
+    const x = EG.parseYmd(a.fecha);
+    const n = a.prendas.length;
+    return `<button type="button" class="acard" data-act="ag.open" data-v="${esc(a.id)}" data-s="${esc(a.nombre + " " + a.whatsapp)}" ${S.ui.open === a.id ? 'aria-current="true"' : ""}>
+      <span class="acard-top"><span class="acard-time"><b class="num">${esc(a.hora)}</b><span class="xs muted">${o.fecha && a.fecha !== hoyYmd() ? DIAS[x.getDay()] + " " + x.getDate() : esc(S.db.settings.duracion) + " min"}</span></span>
+        <span class="grow"><span class="rname">${esc(a.nombre)}</span><span class="rsub">${a.tipo === "video" ? I("video", 13) : I("map-pin", 13)}<span>${U.tipoTxt(a, true)}${a.comoCompra ? " · " + esc(a.comoCompra) : ""}</span></span></span>
+        ${o.estado === false ? "" : U.estadoChip(a)}${I("chevron-right", 16)}</span>
+      ${n ? `<span class="acard-prendas">${U.thumbs(a.prendas, 4)}<span class="xs muted">${U.plural(n, "prenda")}</span></span>` : ""}</button>`;
+  };
 
   /* ---------- filas de cita ---------- */
   P.apptRow = (a, opts) => {
@@ -62,7 +78,9 @@
     const hoy = hoyYmd();
     const d = new Date();
     const ahora = EG.toH(d.getHours() * 60 + d.getMinutes());
-    const saludo = d.getHours() < 13 ? "Buen día" : d.getHours() < 20 ? "Buenas tardes" : "Buenas noches";
+    const saludo = "Hola" + (s.saludoNombre ? ", " + esc(s.saludoNombre) : "");
+    const MESES_L = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    const fechaHoy = cap(fechaLarga(hoy).split(" ")[0]) + " " + d.getDate() + " de " + MESES_L[d.getMonth()] + " de " + d.getFullYear();
     const deHoy = activas(S.db.appts.filter((a) => a.fecha === hoy));
     const futuras = S.db.appts
       .filter((a) => a.estado === "confirmada" && (a.fecha > hoy || (a.fecha === hoy && a.hora >= ahora)))
@@ -74,7 +92,7 @@
     const vidHoy = deHoy.filter((a) => a.tipo === "video" && a.estado === "confirmada").length;
     if (vidHoy) avisos.push([I("video", 17), `Hoy tenés ${U.plural(vidHoy, "videollamada")}.`, "nav", "Ver", "agenda"]);
     if (sinPrecio) avisos.push([I("info", 17), "Las prendas todavía no tienen precio: los montos de Métricas se activan al cargarlos.", "nav", "Catálogo", "catalogo"]);
-    const avisosHtml = `<div class="card stack"><h3>Avisos</h3>${avisos.length
+    const avisosHtml = (cls) => `<div class="card stack ${cls}"><h3>Avisos</h3>${avisos.length
       ? avisos.map((x) => `<div class="row nowrap" style="align-items:flex-start">${x[0]}<span class="grow small">${x[1]}</span><button type="button" class="btn xs" data-act="${x[2]}" data-v="${x[4] || ""}">${x[3]}</button></div>`).join("")
       : `<p class="small muted">Todo al día.</p>`}</div>`;
     const link = S.publicLink();
@@ -82,18 +100,22 @@
       <div class="row nowrap" style="background:var(--bg);border-radius:999px;padding:6px 6px 6px 14px">${I("link", 15)}<span class="grow ellipsis small" title="${esc(link)}">${esc(link)}</span>
         <button type="button" class="btn xs dark" data-act="copiarLink">Copiar</button></div>
       <div class="row"><button type="button" class="btn sm" data-act="mod.open" data-v="qr">${I("qr-code", 15)}Ver QR</button><button type="button" class="btn sm" data-act="verPublica">${I("external-link", 15)}Ver como clienta</button></div></div>`;
-    return `${P.title(saludo, cap(fechaLarga(hoy)), `<button type="button" class="btn dark sm" data-act="mod.open" data-v="reserva">${I("plus", 15)}Nueva reserva</button>`)}
+    const prox = futuras.slice(0, 6);
+    const pres = prox.filter((a) => a.tipo !== "video").length;
+    return `${P.title(saludo, fechaHoy, `<button type="button" class="btn sm" data-act="nav" data-v="agenda">${I("calendar-days", 15)}Ver agenda</button>`)}
       <div class="stack lg">
-        <div class="stats"><div class="stat"><span class="small muted">Citas de hoy</span><b class="num">${deHoy.length}</b></div>
-          <div class="stat"><span class="small muted">Videollamadas</span><b class="num">${deHoy.filter((a) => a.tipo === "video").length}</b></div>
-          <div class="stat"><span class="small muted">Prendas a preparar</span><b class="num">${deHoy.reduce((n, a) => n + a.prendas.length, 0)}</b></div></div>
+        <div class="stats"><div class="stat bordered"><b class="num">${deHoy.length}</b><span class="small muted">Citas de hoy</span></div>
+          <div class="stat bordered"><b class="num">${deHoy.filter((a) => a.tipo === "video").length}</b><span class="small muted">Videollamadas</span></div>
+          <div class="stat bordered"><b class="num">${deHoy.reduce((n, a) => n + a.prendas.length, 0)}</b><span class="small muted">Prendas a preparar</span></div></div>
+        ${avisosHtml("only-mob")}
         <div class="cols"><div class="stack">
-          <div class="row between"><h2>Próximas citas</h2><button type="button" class="linkbtn" data-act="nav" data-v="agenda">Ver agenda</button></div>
-          ${futuras.length ? `<div class="rows">${futuras.slice(0, 6).map((a) => P.apptRow(a, { fecha: true })).join("")}</div>` : `<p class="empty">No hay citas próximas. Cuando una clienta reserve, aparece acá con las prendas que eligió.</p>`}
+          <div class="row between"><h2>Próximas citas</h2><span class="small muted">${prox.length && prox[0].fecha === hoy ? "Hoy" : ""}</span></div>
+          ${prox.length ? `<div class="alist">${prox.map((a) => P.apptCard(a, { fecha: true, estado: false })).join("")}</div>
+            <p class="xs muted">${U.plural(prox.length, "cita")} · ${U.plural(pres, "presencial", "presenciales")} · ${U.plural(prox.length - pres, "videollamada")}</p>` : `<p class="empty">No hay citas próximas. Cuando una clienta reserve, aparece acá con las prendas que eligió.</p>`}
           ${!S.db.appts.length ? `<div class="card stack sm"><h3>¿Querés ver el panel con datos?</h3><p class="small muted">Cargá citas y clientas de ejemplo para probar Agenda, Clientas y Métricas. Las podés borrar después desde Configuración.</p>
             <button type="button" class="btn sm dark" style="align-self:flex-start" data-act="conf.ejemplo">Cargar datos de ejemplo</button></div>` : ""}
           <p class="notice soft">Etapa 1: las reservas se guardan solo en este navegador. Todavía no compartas el link con clientas; eso se conecta en la etapa 2.</p>
-        </div><div class="stack">${avisosHtml}${compartir}</div></div></div>`;
+        </div><div class="stack">${compartir}${avisosHtml("only-desk")}</div></div></div>`;
   }
 
   /* ---------- Agenda ---------- */
@@ -112,13 +134,15 @@
     const bloqs = S.db.bloqueos.filter((b) => b.fecha >= desde && b.fecha <= hasta);
     const fechas = Array.from(new Set(citas.map((a) => a.fecha).concat(bloqs.map((b) => b.fecha)))).sort();
     if (!fechas.length) return `<p class="empty">No hay citas entre esas fechas.</p>`;
-    return `<div class="rows" data-fscope><span hidden data-fempty></span>${fechas.map((f) => {
+    const total = activas(citas).length;
+    return `<div class="stack" data-fscope><div class="row between"><h2>Citas por día</h2><span class="small muted">${U.plural(total, "cita")}</span></div>
+      <p class="empty" data-fempty hidden>No hay citas con ese nombre o teléfono.</p>${fechas.map((f) => {
       const del = citas.filter((a) => a.fecha === f).sort((x, y) => x.hora.localeCompare(y.hora));
       const bl = bloqs.filter((b) => b.fecha === f);
-      return `<div class="dayhead"><span>${esc(cap(fechaLarga(f)))}${f === hoyYmd() ? " · hoy" : ""}</span><span class="muted" style="font-weight:400">${U.plural(activas(del).length, "cita")}</span></div>
+      return `<div class="alist"><div class="aday"><span>${esc(cap(fechaLarga(f)))}${f === hoyYmd() ? " · hoy" : ""}</span><span>${U.plural(activas(del).length, "cita")}</span></div>
         ${bl.map((b) => `<div class="blockrow">${I("ban", 15)}<span class="grow">${b.desde ? esc(b.desde) + " a " + esc(b.hasta) : "Día completo"} · Bloqueado${b.motivo ? " · " + esc(b.motivo) : ""}</span>
           <button type="button" class="iconbtn sm" data-act="ag.desbloquear" data-v="${esc(b.id)}" aria-label="Quitar bloqueo">${I("x", 14)}</button></div>`).join("")}
-        ${del.map((a) => P.apptRow(a)).join("")}`;
+        ${del.map((a) => P.apptCard(a)).join("")}</div>`;
     }).join("")}</div>`;
   }
 
@@ -159,10 +183,10 @@
         <button type="button" data-act="ag.vista" data-v="lista" aria-pressed="${vista === "lista"}">${I("list", 14)} Lista</button>
         <button type="button" data-act="ag.vista" data-v="calendario" aria-pressed="${vista === "calendario"}">${I("calendar-range", 14)} Calendario</button></div>
       ${vista === "lista" ? `<div class="daterange"><input class="t num" type="date" value="${desde}" data-change="ag.desde" aria-label="Desde"><span class="muted">a</span><input class="t num" type="date" value="${hasta}" data-change="ag.hasta" aria-label="Hasta"></div>
-        <label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar</span><input class="t" type="search" placeholder="Buscar por nombre o teléfono" value="${esc(S.ui.agQ)}" data-bind="agQ" data-filter=".rows .rowitem"></label>` : ""}
+        <label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar</span><input class="t" type="search" placeholder="Buscar por nombre o teléfono" value="${esc(S.ui.agQ)}" data-bind="agQ" data-filter=".alist .acard"></label>` : ""}
       <button type="button" class="btn sm light" data-act="ag.export">${I("download", 15)}Exportar</button></div>`;
-    return `${P.title("Agenda", "", `<button type="button" class="btn sm" data-act="mod.open" data-v="bloqueo">${I("ban", 15)}Bloquear horario</button>
-        <button type="button" class="btn sm dark" data-act="mod.open" data-v="reserva">${I("plus", 15)}Nueva reserva</button>`)}
+    return `${P.title("Agenda", "Organizá tus citas y prepará cada visita.", `<button type="button" class="btn sm dark" data-act="mod.open" data-v="reserva">${I("plus", 15)}Nueva reserva</button>
+        <button type="button" class="btn sm" data-act="mod.open" data-v="bloqueo">${I("ban", 15)}Bloquear horario</button>`)}
       <div class="split${abierta ? " open" : ""}"><div class="smain">${tools}${vista === "lista" ? lista(desde, hasta) : semana()}</div>
       ${abierta ? `<aside class="detail" aria-label="Detalle de la cita">${detalle(abierta)}</aside>` : ""}</div>`;
   }

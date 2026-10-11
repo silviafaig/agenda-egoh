@@ -31,6 +31,7 @@
       feriados: [],
       fechasEspeciales: [],
       opcionesComoCompra: ["1ra compra", "Emprendimiento", "Revendedora", "Comercio", "Uso personal"],
+      saludoNombre: "Sil",
       logo: "",
       portada: ""
     };
