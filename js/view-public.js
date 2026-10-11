@@ -58,7 +58,7 @@
         ${s.compraMinima > 0 ? `<p>${I("shopping-bag", 16)}<span>${minimoTxt(s)}</span></p>` : ""}</div>
       <div class="options">
         ${opt("presencial", "map-pin", "Visita al showroom", esc(s.duracion) + " min · Ves y probás las prendas en persona" + (barrio(s) ? " · " + esc(barrio(s)) : "") + ".")}
-        ${opt("video", "video", "Videollamada", esc(s.duracion) + " min · Te mostramos las prendas en vivo, desde donde estés.")}
+        ${opt("video", "video", "Videollamada", esc(s.duracion) + " min · Te mostramos las prendas en vivo por videollamada de WhatsApp.")}
       </div>
       <button type="button" class="btn dark block" data-act="pub.next" ${b.tipo ? "" : "disabled"}>Elegir día y horario</button>`;
   }
@@ -169,7 +169,7 @@
     const minimo = s.compraMinima > 0 ? li("shopping-bag", minimoTxt(s)) : "";
     if (tipo === "video") {
       return `<div class="sumblock"><h3>Antes de la videollamada</h3>
-        ${li("video", "Al confirmar te damos el link de la videollamada. Entrás desde el celular o la compu, sin instalar nada.")}
+        ${li("video", "Te llamamos por videollamada de WhatsApp al número que dejaste, a la hora de la cita.")}
         ${li("clock", "Dura " + esc(s.duracion) + " min. Conectate a horario.")}${minimo}</div>`;
     }
     return `<div class="sumblock"><h3>Antes de venir</h3>
@@ -200,9 +200,7 @@
         <h1>¡Listo, ${esc(a.nombre.split(" ")[0])}!</h1>
         <p class="muted">Tu cita quedó confirmada para el <b style="color:var(--ink)">${esc(fechaLarga(a.fecha))} a las ${esc(a.hora)} hs</b>.</p></div>
       <div class="sumblock">${a.tipo === "video"
-        ? `<h3 class="row">${I("video", 16)}Videollamada</h3><p class="small">Entrá a la hora de la cita desde este link (no necesitás instalar nada):</p>
-           <a class="small b" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener" style="overflow-wrap:anywhere">${esc(EG.videoLink(a))}</a>
-           <div class="row"><a class="btn dark sm" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${I("video", 15)}Abrir link</a><button type="button" class="btn sm" data-act="pub.copyVideo">${I("copy", 15)}Copiar link</button></div>`
+        ? `<h3 class="row">${I("video", 16)}Videollamada por WhatsApp</h3><p class="small">A la hora de la cita te llamamos por videollamada de WhatsApp al <b class="num">${esc(a.whatsapp)}</b>. Tené el celular a mano.</p>`
         : `<h3 class="row">${I("map-pin", 16)}Te esperamos en</h3><p class="small">${esc(s.direccion)}</p>
            <a class="btn dark sm" style="align-self:flex-start" href="${esc(U.mapsLink(s.direccion))}" target="_blank" rel="noopener">${I("navigation", 15)}Cómo llegar</a>`}</div>
       ${a.prendas.length ? `<div class="sumblock"><h3>Vamos a tener listas</h3><ul class="list small">${a.prendas.map((i) => `<li>${esc(EG.itemName(i, S.prod))} · talle ${esc(i.talle)}</li>`).join("")}</ul></div>` : ""}
@@ -234,7 +232,7 @@
     const c = S.ui.cita || (S.ui.cita = { modo: null, fecha: a.fecha, hora: null });
     const datos = `<div class="sumblock"><div class="cardhead"><h3>Tu cita</h3>${U.estadoChip(a)}</div>
       <dl class="kv"><dt>Tipo</dt><dd>${U.tipoTxt(a)}</dd><dt>Día</dt><dd>${esc(fechaLarga(a.fecha))}</dd><dt>Hora</dt><dd>${esc(a.hora)} hs</dd>
-      ${a.tipo === "video" ? `<dt>Link</dt><dd><a href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${esc(EG.videoLink(a))}</a></dd>` : `<dt>Dónde</dt><dd>${esc(s.direccion)}</dd>`}</dl></div>`;
+      ${a.tipo === "video" ? `<dt>Cómo</dt><dd>Te llamamos por videollamada de WhatsApp</dd>` : `<dt>Dónde</dt><dd>${esc(s.direccion)}</dd>`}</dl></div>`;
     if (a.estado === "cancelada") {
       return wrap(`<h1>Tu cita está cancelada</h1>${datos}<button type="button" class="btn dark" data-act="pub.nueva">Reservar otra cita</button>`);
     }
@@ -319,7 +317,6 @@
 
   A["pub.restart"] = () => { resetBooking(); return "top"; };
   A["pub.nueva"] = () => { resetBooking(); S.go("reservar"); return false; };
-  A["pub.copyVideo"] = () => { U.copyToast(EG.videoLink(S.ui.done), "Link copiado."); return false; };
   A["pub.backPanel"] = () => { resetBooking(); S.ui.fromPanel = false; S.go("inicio"); return false; };
   A["pub.seePanel"] = () => {
     const a = S.ui.done;

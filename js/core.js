@@ -174,7 +174,7 @@
   EG.msgRecordatorio = function (a, settings, getProd, link) {
     var nombre = a.nombre.split(" ")[0];
     var t = "¡Hola " + nombre + "! Te recordamos tu cita en " + settings.nombre + " el " + EG.fechaLarga(a.fecha) + " a las " + a.hora + " hs.";
-    if (a.tipo === "video") t += "\nEs por videollamada. Entrás desde este link: " + EG.videoLink(a);
+    if (a.tipo === "video") t += "\nEs por videollamada de WhatsApp: te llamamos a este número a la hora de la cita.";
     else t += "\nTe esperamos en " + settings.direccion + ".";
     if (a.prendas.length) {
       t += "\n\nTenemos listas las prendas que elegiste:\n" + a.prendas.map(function (i) { return linea(i, getProd, false); }).join("\n");
@@ -187,7 +187,7 @@
   EG.msgConfirmacion = function (a, settings, getProd, link) {
     var nombre = a.nombre.split(" ")[0];
     var t = "¡Hola " + nombre + "! Te confirmamos tu cita en " + settings.nombre + " el " + EG.fechaLarga(a.fecha) + " a las " + a.hora + " hs.";
-    if (a.tipo === "video") t += "\nEs por videollamada. Entrás desde este link: " + EG.videoLink(a);
+    if (a.tipo === "video") t += "\nEs por videollamada de WhatsApp: te llamamos a este número a la hora de la cita.";
     else t += "\nTe esperamos en " + settings.direccion + ".";
     if (a.prendas.length) t += "\n\nVamos a tener listas:\n" + a.prendas.map(function (i) { return linea(i, getProd, false); }).join("\n");
     if (link) t += "\n\nSi necesitás reprogramar o cancelar, entrá acá: " + link;

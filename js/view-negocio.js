@@ -377,7 +377,7 @@
     ["¿Cómo reservan las clientas?", "Entran al link de tu agenda (lo encontrás en Compartir), eligen visita o videollamada, el día y el horario, las prendas que quieren ver y dejan sus datos."],
     ["¿Cómo les mando el recordatorio?", "En Agenda, abrí la cita y tocá “Recordatorio por WhatsApp”. Se abre WhatsApp con el mensaje armado, que incluye el link para reprogramar o cancelar. Lo enviás vos, así no tiene costo."],
     ["¿Cómo bloqueo un horario o un día?", "En Agenda, “Bloquear horario”. Para feriados o vacaciones usá Horarios y disponibilidad."],
-    ["¿Cómo funciona la videollamada?", "Cada cita por video tiene su propio link de Jitsi Meet. Es gratis y la clienta no necesita instalar nada ni crear una cuenta."],
+    ["¿Cómo funciona la videollamada?", "A la hora de la cita llamás a la clienta por videollamada de WhatsApp. En el detalle de la cita, “Videollamada por WhatsApp” te abre el chat con ella: ahí tocás el ícono de la cámara."],
     ["¿Cómo cargo las fotos de las prendas?", "En Catálogo, “Cargar fotos en masa”: elegís todas juntas y cada una se asigna por el nombre del archivo."],
     ["¿Por qué no me llegan las reservas de otras personas?", "En esta primera etapa los datos se guardan en este navegador. En la etapa 2 se conecta la base de datos y las reservas llegan desde cualquier celular."]
   ];

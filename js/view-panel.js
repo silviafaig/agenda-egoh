@@ -243,7 +243,8 @@
           <button type="button" class="btn sm" style="align-self:flex-end" data-act="ag.notas">Guardar notas</button></section>
         <section class="card bordered stack"><h3>${a.tipo === "video" ? "Videollamada" : "Visita al showroom"}</h3>
           <p class="small muted">${esc(cap(fechaLarga(a.fecha)))} · ${esc(a.hora)} – ${esc(fin)}</p>
-          ${a.tipo === "video" && a.sala ? `<a class="btn dark block" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${I("video", 15)}Abrir videollamada</a>` : ""}
+          ${a.tipo === "video" ? `<a class="btn dark block" href="${esc("https://wa.me/" + a.whatsapp)}" target="_blank" rel="noopener">${I("video", 15)}Videollamada por WhatsApp</a>
+            <p class="xs muted">Abre el chat con ${esc(a.nombre.split(" ")[0])}: tocá el ícono de la cámara para llamarla.</p>` : ""}
           ${a.estado === "confirmada" ? `<a class="btn block" href="${esc(EG.waLink(a.whatsapp, msgRec))}" target="_blank" rel="noopener">${I("message-circle", 15)}Recordatorio por WhatsApp</a>
             <p class="xs muted">El recordatorio incluye el horario y el link para reprogramar o cancelar.</p>` : ""}</section>
       </div></div>`;
