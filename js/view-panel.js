@@ -50,6 +50,17 @@
   P.title = (titulo, sub, acciones) =>
     `<div class="ptitle"><div><span class="label">${EYEBROW[S.ui.route] || ""}</span><h1>${titulo}</h1>${sub ? `<p class="sub">${sub}</p>` : ""}</div>${acciones ? `<div class="row">${acciones}</div>` : ""}</div>`;
 
+  /* ---------- recordatorios: citas del próximo día de atención ---------- */
+  P.porRecordar = () => {
+    const s = S.db.settings, hoy = hoyYmd();
+    const prox = EG.nextDays(s, 2).find((d) => d > hoy);
+    if (!prox) return { fecha: null, citas: [], etiqueta: "" };
+    const etiqueta = prox === addDays(hoy, 1) ? "mañana" : "el " + fechaLarga(prox);
+    const citas = S.db.appts.filter((a) => a.fecha === prox && a.estado === "confirmada").sort((x, y) => x.hora.localeCompare(y.hora));
+    const de = prox === addDays(hoy, 1) ? "de mañana" : "del " + fechaLarga(prox);
+    return { fecha: prox, etiqueta, de, citas: citas.filter((a) => !a.recordatorio), todas: citas };
+  };
+
   /* ---------- tarjeta de cita ---------- */
   P.apptCard = (a, opts) => {
     const o = opts || {};
@@ -89,6 +100,8 @@
     const sinMarcar = S.db.appts.filter((a) => a.estado === "confirmada" && a.fecha < hoy);
     const sinPrecio = !S.db.products.some((p) => p.precio > 0);
     const avisos = [];
+    const rec = P.porRecordar();
+    if (rec.citas.length) avisos.push([I("message-circle", 17), `${U.plural(rec.citas.length, "cita")} ${rec.citas.length === 1 ? "es" : "son"} ${rec.etiqueta}: mandá ${rec.citas.length === 1 ? "el recordatorio" : "los recordatorios"} por WhatsApp.`, "mod.open", "Enviar", "recordatorios"]);
     if (sinMarcar.length) avisos.push([I("circle-alert", 17), `${U.plural(sinMarcar.length, "cita")} de días anteriores sin marcar asistencia.`, "aviso.sinMarcar", "Revisar"]);
     const vidHoy = deHoy.filter((a) => a.tipo === "video" && a.estado === "confirmada").length;
     if (vidHoy) avisos.push([I("video", 17), `Hoy tenés ${U.plural(vidHoy, "videollamada")}.`, "nav", "Ver", "agenda"]);
@@ -245,7 +258,7 @@
           <p class="small muted">${esc(cap(fechaLarga(a.fecha)))} · ${esc(a.hora)} – ${esc(fin)}</p>
           ${a.tipo === "video" ? `<a class="btn dark block" href="${esc("https://wa.me/" + a.whatsapp)}" target="_blank" rel="noopener">${I("video", 15)}Videollamada por WhatsApp</a>
             <p class="xs muted">Abre el chat con ${esc(a.nombre.split(" ")[0])}: tocá el ícono de la cámara para llamarla.</p>` : ""}
-          ${a.estado === "confirmada" ? `<a class="btn block" href="${esc(EG.waLink(a.whatsapp, msgRec))}" target="_blank" rel="noopener">${I("message-circle", 15)}Recordatorio por WhatsApp</a>
+          ${a.estado === "confirmada" ? `<a class="btn block" href="${esc(EG.waLink(a.whatsapp, msgRec))}" target="_blank" rel="noopener" data-act="rec.enviado" data-v="${esc(a.id)}">${I("message-circle", 15)}${a.recordatorio ? "Reenviar recordatorio" : "Recordatorio por WhatsApp"}</a>
             <p class="xs muted">El recordatorio incluye el horario y el link para reprogramar o cancelar.</p>` : ""}</section>
       </div></div>`;
   }
@@ -310,9 +323,21 @@
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Cancelar</button><button type="submit" class="btn dark">Guardar clienta</button></div></form>`;
   }
 
+  function modalRecordatorios() {
+    const r = P.porRecordar(), s = S.db.settings;
+    const lista = r.todas || [];
+    return `<div class="modal" role="dialog" aria-modal="true" aria-label="Recordatorios">${mhead("Recordatorios por WhatsApp")}
+      <p class="small muted">Citas ${esc(r.de || "")}. Tocá “Enviar” en cada una: se abre WhatsApp con el mensaje listo, con el link para reprogramar o cancelar.</p>
+      ${lista.length ? `<div class="rows">${lista.map((a) => `<div class="rowitem"><span class="time num">${esc(a.hora)}</span><span class="grow"><span class="rname">${esc(a.nombre)}</span><span class="rsub">${U.tipoTxt(a, true)}</span></span>
+        ${a.recordatorio ? `<span class="chip ok">${I("check", 12)}Enviado</span>` : ""}
+        <a class="btn xs ${a.recordatorio ? "" : "dark"}" href="${esc(EG.waLink(a.whatsapp, EG.msgRecordatorio(a, s, S.prod, S.citaLink(a))))}" target="_blank" rel="noopener" data-act="rec.enviado" data-v="${esc(a.id)}">${a.recordatorio ? "Reenviar" : "Enviar"}</a></div>`).join("")}</div>`
+        : `<p class="empty">No hay citas para recordar.</p>`}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Listo</button></div></div>`;
+  }
+
   function modal() {
     const m = S.ui.modal;
-    const body = m.kind === "reserva" ? modalReserva(m) : m.kind === "bloqueo" ? modalBloqueo(m) : m.kind === "qr" ? modalQr() : m.kind === "clienta" ? modalClienta(m) : "";
+    const body = m.kind === "reserva" ? modalReserva(m) : m.kind === "bloqueo" ? modalBloqueo(m) : m.kind === "qr" ? modalQr() : m.kind === "clienta" ? modalClienta(m) : m.kind === "recordatorios" ? modalRecordatorios() : "";
     return `<div class="overlay">${body}</div>`;
   }
 
@@ -355,6 +380,13 @@
   A["ag.notas"] = () => { S.save(); S.toast("Notas guardadas."); return false; };
   EG.changes["ag.estadoSel"] = (t) => { S.db.appts.find((x) => x.id === t.dataset.a).estado = t.value; S.save(); };
   A["ag.close"] = () => { S.ui.open = null; S.ui.avisar = null; return "top"; };
+  // Marca la cita como recordada (el link abre WhatsApp igual, porque no se cancela el click).
+  A["rec.enviado"] = (el) => {
+    const a = S.db.appts.find((x) => x.id === el.dataset.v);
+    if (a) { a.recordatorio = new Date().toISOString(); S.save(); }
+    setTimeout(() => S.render(), 300);
+    return false;
+  };
   A["ag.avisado"] = () => { setTimeout(() => { S.ui.avisar = null; S.render(); }, 300); return false; };
   A["ag.vista"] = (el) => { S.ui.agendaVista = el.dataset.v; };
   A["ag.week"] = (el) => { const v = +el.dataset.v; S.ui.week = v === 0 ? 0 : S.ui.week + v; };
