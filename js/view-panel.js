@@ -90,6 +90,8 @@
         <div class="cols"><div class="stack">
           <div class="row between"><h2>Próximas citas</h2><button type="button" class="linkbtn" data-act="nav" data-v="agenda">Ver agenda</button></div>
           ${futuras.length ? `<div class="rows">${futuras.slice(0, 6).map((a) => P.apptRow(a, { fecha: true })).join("")}</div>` : `<p class="empty">No hay citas próximas. Cuando una clienta reserve, aparece acá con las prendas que eligió.</p>`}
+          ${!S.db.appts.length ? `<div class="card stack sm"><h3>¿Querés ver el panel con datos?</h3><p class="small muted">Cargá citas y clientas de ejemplo para probar Agenda, Clientas y Métricas. Las podés borrar después desde Configuración.</p>
+            <button type="button" class="btn sm dark" style="align-self:flex-start" data-act="conf.ejemplo">Cargar datos de ejemplo</button></div>` : ""}
           <p class="notice soft">Etapa 1: las reservas se guardan solo en este navegador. Todavía no compartas el link con clientas; eso se conecta en la etapa 2.</p>
         </div><div class="stack">${avisosHtml}${compartir}</div></div></div>`;
   }
@@ -184,6 +186,8 @@
       <div class="row nowrap">${U.avatar(a.nombre, "lg")}<div class="grow"><h2>${esc(a.nombre)}</h2>
         <p class="small muted">${esc(cap(fechaLarga(a.fecha)))} · ${esc(a.hora)} hs · ${U.tipoTxt(a, true)}</p>
         <div class="row" style="margin-top:4px">${U.estadoChip(a)}${a.origen === "manual" ? '<span class="chip">Cargada a mano</span>' : ""}</div></div></div>
+      ${S.ui.avisar === a.id ? `<div class="notice soft stack sm" style="color:var(--ink)"><b>Reserva guardada.</b><span class="small">Mandale la confirmación a ${esc(a.nombre.split(" ")[0])}:</span>
+        <a class="btn sm dark" style="align-self:flex-start" href="${esc(EG.waLink(a.whatsapp, EG.msgConfirmacion(a, s, S.prod, S.citaLink(a))))}" target="_blank" rel="noopener" data-act="ag.avisado">${I("message-circle", 15)}Enviar confirmación por WhatsApp</a></div>` : ""}
       <div class="row">${a.estado === "confirmada" ? `<a class="btn sm dark" href="${esc(EG.waLink(a.whatsapp, msgRec))}" target="_blank" rel="noopener">${I("message-circle", 15)}Recordatorio por WhatsApp</a>` : ""}
         ${a.tipo === "video" && a.sala ? `<a class="btn sm" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${I("video", 15)}Abrir videollamada</a>` : ""}</div>
       <div class="stack sm"><span class="label">Clienta</span><dl class="kv"><dt>WhatsApp</dt><dd class="num">+${esc(a.whatsapp)}</dd>
@@ -299,7 +303,8 @@
   };
 
   A["ag.open"] = (el) => { S.ui.open = el.dataset.v; if (S.ui.route !== "agenda") { S.go("agenda"); return false; } return window.innerWidth < 1024 ? "top" : undefined; };
-  A["ag.close"] = () => { S.ui.open = null; };
+  A["ag.close"] = () => { S.ui.open = null; S.ui.avisar = null; };
+  A["ag.avisado"] = () => { setTimeout(() => { S.ui.avisar = null; S.render(); }, 300); return false; };
   A["ag.vista"] = (el) => { S.ui.agendaVista = el.dataset.v; };
   A["ag.week"] = (el) => { const v = +el.dataset.v; S.ui.week = v === 0 ? 0 : S.ui.week + v; };
   A["ag.slot"] = (el) => { P.openReserva({ fecha: el.dataset.f, hora: el.dataset.h }); };
@@ -375,7 +380,7 @@
     };
     S.db.appts.push(a);
     S.save();
-    if (m.avisar) window.open(EG.waLink(a.whatsapp, EG.msgConfirmacion(a, s, S.prod, S.citaLink(a))), "_blank", "noopener");
+    S.ui.avisar = m.avisar ? a.id : null;
     S.ui.modal = null;
     S.ui.open = a.id;
     S.toast("Reserva guardada.");

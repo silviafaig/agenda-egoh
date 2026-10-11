@@ -36,7 +36,8 @@
       ${src ? `<img src="${esc(src)}" alt="Foto de la prenda" style="width:96px;border-radius:12px;aspect-ratio:4/5;object-fit:cover;object-position:center top">` : ""}
       ${S.ui.formErr ? `<p class="err" role="alert">${esc(S.ui.formErr)}</p>` : ""}
       <div class="row"><button class="btn dark" type="submit">Guardar</button><button class="btn" type="button" data-act="cat.cancelar">Cancelar</button>
-        ${e.id ? `<button class="btn danger right" type="button" data-act="cat.borrar">${I("trash-2", 15)}Quitar del catálogo</button>` : ""}</div></form>`;
+        ${e.id ? `<button class="btn danger right" type="button" data-act="cat.borrar">${I("trash-2", 15)}${S.ui.confirmar === "borrar" ? "Sí, quitar del catálogo" : "Quitar del catálogo"}</button>` : ""}</div>
+      ${S.ui.confirmar === "borrar" ? `<p class="small muted">Tocá de nuevo para confirmar. Las citas que ya la tenían elegida conservan su nombre.</p>` : ""}</form>`;
   }
   P.VISTAS.catalogo = () => {
     const lista = S.db.products.filter((p) => p.categoria === S.ui.catPanel);
@@ -65,10 +66,11 @@
     S.ui.editProd = { id: p.id, nombre: p.nombre, categoria: p.categoria, precio: p.precio || "", modelo: p.modelo || "", color: p.color || "", tallesTxt: p.talles.join(", "), fotoNueva: "" };
     return "top";
   };
-  A["cat.cancelar"] = () => { S.ui.editProd = null; S.ui.formErr = ""; };
+  A["cat.cancelar"] = () => { S.ui.editProd = null; S.ui.formErr = ""; S.ui.confirmar = null; };
   A["cat.borrar"] = () => {
     const e = S.ui.editProd;
-    if (!window.confirm("¿Quitar “" + e.nombre + "” del catálogo? Las citas que ya la tenían elegida conservan su nombre.")) return false;
+    if (S.ui.confirmar !== "borrar") { S.ui.confirmar = "borrar"; return; }
+    S.ui.confirmar = null;
     S.db.products = S.db.products.filter((p) => p.id !== e.id);
     EG.store.fotoDel(e.id);
     S.ui.editProd = null;
@@ -308,7 +310,8 @@
       ${sec("Personas con acceso", "Invitá a alguien de tu equipo para que vea y edite la agenda. Se activa con el login (etapa 2).", `<div class="rows"><div class="rowitem">${U.avatar(S.db.settings.nombre)}<span class="grow"><span class="rname">Vos</span><span class="rsub">Dueña</span></span><span class="chip">Puede editar</span></div></div>
         <button type="button" class="btn sm" style="align-self:flex-start" disabled>${I("user-plus", 15)}Invitar</button>`)}
       ${sec("Datos de prueba", "Para probar el panel sin esperar reservas reales. Todo queda solo en este navegador.", `<div class="row"><button type="button" class="btn sm" data-act="conf.ejemplo">Cargar datos de ejemplo</button>
-        <button type="button" class="btn sm danger" data-act="conf.reset">Volver a los datos iniciales</button></div>`)}`)}`;
+        <button type="button" class="btn sm danger" data-act="conf.reset">${S.ui.confirmar === "reset" ? "Sí, borrar todo" : "Volver a los datos iniciales"}</button></div>
+        ${S.ui.confirmar === "reset" ? `<p class="small muted">Se borran las citas, las clientas, los cambios del catálogo y la configuración de este navegador. Tocá “Sí, borrar todo” para confirmar.</p>` : ""}`)}`)}`;
   A["conf.ejemplo"] = () => {
     const s = S.db.settings;
     const fecha = EG.nextDays(s, 1)[0];
@@ -327,7 +330,8 @@
     S.toast(n ? "Se cargaron " + n + " citas de ejemplo." : "Esos horarios ya están ocupados.");
   };
   A["conf.reset"] = () => {
-    if (!window.confirm("Se borran las citas, las clientas, los cambios del catálogo y la configuración de este navegador, y vuelve todo a los datos iniciales. ¿Seguimos?")) return false;
+    if (S.ui.confirmar !== "reset") { S.ui.confirmar = "reset"; return; }
+    S.ui.confirmar = null;
     EG.store.clearAll();
     S.db = EG.seed();
     S.save();

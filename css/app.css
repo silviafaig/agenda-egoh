@@ -310,7 +310,8 @@ details.tree .lvl { padding-left: 16px; }
 .dual { display: flex; flex-direction: column; gap: 3px; }
 .dual .meter { height: 5px; }
 .dual .meter i.alt { background: var(--ink); }
-.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legend span { white-space: nowrap; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 
 /* QR */

@@ -64,6 +64,7 @@
     S.ui.draft = null;
     S.ui.draftErr = "";
     S.ui.modal = null;
+    S.ui.confirmar = null;
     if (S.ui.route === "reservar" && !S.ui.splashShown) {
       S.ui.splash = true;
       S.ui.splashShown = true;
