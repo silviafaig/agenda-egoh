@@ -49,11 +49,14 @@
         <span><h3>${titulo}</h3><p>${desc}</p></span></button>`;
     return `${portada ? `<div class="portada" style="background-image:url('${esc(portada)}')" role="img" aria-label="Portada de ${esc(s.nombre)}"></div>` : ""}
       ${head(0, "¿Cómo querés conocer la colección?")}
+      <div class="brief">
+        ${b.tipo === "presencial" ? `<p>${I("map-pin", 16)}<span>${esc(s.direccion)}</span></p>` : ""}
+        <p>${I("clock", 16)}<span>Solo con cita previa · ${esc(s.duracion)} min</span></p>
+        ${s.compraMinima > 0 ? `<p>${I("shopping-bag", 16)}<span>${minimoTxt(s)}</span></p>` : ""}</div>
       <div class="options">
         ${opt("presencial", "map-pin", "Visita al showroom", esc(s.duracion) + " min · Ves y probás las prendas en persona" + (barrio(s) ? " · " + esc(barrio(s)) : "") + ".")}
         ${opt("video", "video", "Videollamada", esc(s.duracion) + " min · Te mostramos las prendas en vivo, desde donde estés.")}
       </div>
-      ${b.tipo === "presencial" ? `<div class="brief"><p>${I("map-pin", 16)}<span>${esc(s.direccion)}</span></p></div>` : ""}
       <button type="button" class="btn dark block" data-act="pub.next" ${b.tipo ? "" : "disabled"}>Continuar</button>`;
   }
 
