@@ -30,12 +30,8 @@
 
   const minimoTxt = (s) => (s.compraMinima > 0 ? `Compra mínima ${money(s.compraMinima)}${s.compraMinimaNota ? " " + esc(s.compraMinimaNota) : ""}` : "");
 
-  function brief(s) {
-    return `<div class="brief">
-      <p>${I("map-pin", 16)}<span>${esc(s.direccion)}</span></p>
-      <p>${I("clock", 16)}<span>Solo con cita previa · ${esc(s.duracion)} min</span></p>
-      ${s.compraMinima > 0 ? `<p>${I("shopping-bag", 16)}<span>${minimoTxt(s)}</span></p>` : ""}</div>`;
-  }
+  // Barrio: la última parte de la dirección ("Av. Federico Lacroze 2911 PB A, Colegiales" -> "Colegiales").
+  const barrio = (s) => { const p = String(s.direccion || "").split(","); return p.length > 1 ? p[p.length - 1].trim() : ""; };
 
   function head(st, titulo, sub) {
     return `<div class="stack sm">
@@ -53,11 +49,11 @@
         <span><h3>${titulo}</h3><p>${desc}</p></span></button>`;
     return `${portada ? `<div class="portada" style="background-image:url('${esc(portada)}')" role="img" aria-label="Portada de ${esc(s.nombre)}"></div>` : ""}
       ${head(0, "¿Cómo querés conocer la colección?")}
-      ${brief(s)}
       <div class="options">
-        ${opt("presencial", "map-pin", "Visita al showroom", s.duracion + " min · Ves y probás las prendas en persona.")}
-        ${opt("video", "video", "Videollamada", s.duracion + " min · Te mostramos las prendas en vivo, desde donde estés.")}
+        ${opt("presencial", "map-pin", "Visita al showroom", esc(s.duracion) + " min · Ves y probás las prendas en persona" + (barrio(s) ? " · " + esc(barrio(s)) : "") + ".")}
+        ${opt("video", "video", "Videollamada", esc(s.duracion) + " min · Te mostramos las prendas en vivo, desde donde estés.")}
       </div>
+      ${b.tipo === "presencial" ? `<div class="brief"><p>${I("map-pin", 16)}<span>${esc(s.direccion)}</span></p></div>` : ""}
       <button type="button" class="btn dark block" data-act="pub.next" ${b.tipo ? "" : "disabled"}>Continuar</button>`;
   }
 
@@ -162,12 +158,17 @@
       <button class="btn dark block" type="submit">Ver resumen</button></form>`;
   }
 
-  function antesDeVenir(s) {
+  function antesDeVenir(s, tipo) {
+    const li = (ico, txt) => `<p class="row nowrap small" style="align-items:flex-start">${I(ico, 15)}<span>${txt}</span></p>`;
+    const minimo = s.compraMinima > 0 ? li("shopping-bag", minimoTxt(s)) : "";
+    if (tipo === "video") {
+      return `<div class="sumblock"><h3>Antes de la videollamada</h3>
+        ${li("video", "Al confirmar te damos el link de la videollamada. Entrás desde el celular o la compu, sin instalar nada.")}
+        ${li("clock", "Dura " + esc(s.duracion) + " min. Conectate a horario.")}${minimo}</div>`;
+    }
     return `<div class="sumblock"><h3>Antes de venir</h3>
-      <p class="row nowrap small" style="align-items:flex-start">${I("map-pin", 15)}<span>${esc(s.direccion)}</span></p>
-      <p class="row nowrap small" style="align-items:flex-start">${I("clock", 15)}<span>Solo con cita previa · ${esc(s.duracion)} min</span></p>
-      ${s.compraMinima > 0 ? `<p class="row nowrap small" style="align-items:flex-start">${I("shopping-bag", 15)}<span>${minimoTxt(s)}</span></p>` : ""}
-      ${s.info ? `<p class="row nowrap small" style="align-items:flex-start">${I("info", 15)}<span>${esc(s.info)}</span></p>` : ""}</div>`;
+      ${li("map-pin", esc(s.direccion))}${li("clock", "Solo con cita previa · " + esc(s.duracion) + " min")}${minimo}
+      ${s.info ? li("info", esc(s.info)) : ""}</div>`;
   }
 
   function stepResumen(s, b) {
@@ -181,7 +182,7 @@
           ? `<ul class="list small">${b.prendas.map((i) => `<li>${esc(EG.itemName(i, S.prod))} · talle ${esc(i.talle)}</li>`).join("")}</ul>${priced ? `<p class="small"><b>Total: <span class="num">${money(EG.totalOf(b.prendas, S.prod))}</span></b></p>` : ""}`
           : `<p class="small muted">Sin preselección: elegís en la cita.</p>`)}
         ${blk("Tus datos", 3, `<dl class="kv"><dt>Nombre</dt><dd>${esc(b.nombre)}</dd><dt>WhatsApp</dt><dd class="num">${esc(b.whatsapp)}</dd><dt>Email</dt><dd>${esc(b.email)}</dd>${b.zona ? `<dt>Zona</dt><dd>${esc(b.zona)}</dd>` : ""}<dt>Comprás</dt><dd>${esc(b.comoCompra)}</dd>${b.queBusca ? `<dt>Buscás</dt><dd>${esc(b.queBusca)}</dd>` : ""}</dl>`)}
-      </div><div class="stack">${antesDeVenir(s)}
+      </div><div class="stack">${antesDeVenir(s, b.tipo)}
         ${S.ui.formErr ? `<p class="err" role="alert">${esc(S.ui.formErr)}</p>` : ""}
         <button type="button" class="btn dark block" data-act="pub.confirmar">Confirmar cita</button></div></div>`;
   }
