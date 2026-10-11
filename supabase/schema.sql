@@ -45,7 +45,7 @@ create table if not exists citas (
   hora text not null check (hora ~ '^\d{2}:\d{2}$'),
   estado text not null default 'confirmada' check (estado in ('confirmada', 'asistio', 'no_vino', 'cancelada')),
   tipo text not null check (tipo in ('presencial', 'video')),
-  token text not null default encode(gen_random_bytes(12), 'hex'),
+  token text not null default replace(gen_random_uuid()::text, '-', ''),
   data jsonb not null,
   primary key (showroom_id, id)
 );
@@ -166,7 +166,7 @@ $$;
 create or replace function reservar(p_slug text, p jsonb) returns jsonb
 language plpgsql volatile security definer set search_path = public as $$
 declare
-  sid uuid; motivo text; wa text; cid text; nueva_id text := encode(gen_random_bytes(6), 'hex'); tok text := encode(gen_random_bytes(12), 'hex');
+  sid uuid; motivo text; wa text; cid text; nueva_id text := left(replace(gen_random_uuid()::text, '-', ''), 12); tok text := replace(gen_random_uuid()::text, '-', '');
   sala text; datos jsonb; fecha date := (p ->> 'fecha')::date; prendas jsonb;
 begin
   select id into sid from showrooms where slug = p_slug;
@@ -186,7 +186,7 @@ begin
   -- clienta: se identifica por WhatsApp; los datos nuevos completan, las notas no se tocan
   select id into cid from clientas where showroom_id = sid and whatsapp = wa;
   if cid is null then
-    cid := 'c-' || encode(gen_random_bytes(5), 'hex');
+    cid := 'c-' || left(replace(gen_random_uuid()::text, '-', ''), 10);
     insert into clientas (showroom_id, id, whatsapp, data)
       values (sid, cid, wa, datos || jsonb_build_object('id', cid, 'whatsapp', wa, 'notas', '', 'creada', now()));
   else
@@ -195,7 +195,7 @@ begin
         'zona', nullif(datos ->> 'zona', ''), 'comoCompra', nullif(datos ->> 'comoCompra', '')))
       where showroom_id = sid and id = cid;
   end if;
-  if p ->> 'tipo' = 'video' then sala := 'showroom-' || encode(gen_random_bytes(7), 'hex'); end if;
+  if p ->> 'tipo' = 'video' then sala := 'showroom-' || left(replace(gen_random_uuid()::text, '-', ''), 14); end if;
   insert into citas (showroom_id, id, fecha, hora, estado, tipo, token, data) values (sid, nueva_id, fecha, p ->> 'hora', 'confirmada', p ->> 'tipo', tok,
     datos || jsonb_build_object('whatsapp', wa, 'queBusca', left(coalesce(p ->> 'queBusca', ''), 500), 'prendas', prendas,
       'notas', '', 'sala', sala, 'creada', now(), 'clientaId', cid, 'origen', 'clienta'));

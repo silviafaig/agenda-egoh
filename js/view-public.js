@@ -372,7 +372,7 @@
           }
           S.render({ top: true });
         })
-        .catch(() => { ui.busy = false; ui.formErr = "No pudimos confirmar la cita. Revisá tu conexión y probá de nuevo."; S.render(); });
+        .catch((e) => { console.error("reservar", e); ui.busy = false; ui.formErr = "No pudimos confirmar la cita. Revisá tu conexión y probá de nuevo."; S.render(); });
       S.render();
       return false;
     }
