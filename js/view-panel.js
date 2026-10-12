@@ -262,6 +262,8 @@
             <p class="xs muted">Abre el chat con ${esc(a.nombre.split(" ")[0])}: tocá el ícono de la cámara para llamarla.</p>` : ""}
           ${a.estado === "confirmada" ? `<a class="btn block" href="${esc(EG.waLink(a.whatsapp, msgRec))}" target="_blank" rel="noopener" data-act="rec.enviado" data-v="${esc(a.id)}">${I("message-circle", 15)}${a.recordatorio ? "Reenviar recordatorio" : "Recordatorio por WhatsApp"}</a>
             <p class="xs muted">El recordatorio incluye el horario y el link para reprogramar o cancelar.</p>` : ""}</section>
+        <section class="stack sm"><button type="button" class="btn sm danger" style="align-self:flex-start" data-act="ag.eliminar" data-a="${esc(a.id)}">${I("trash-2", 14)}${S.ui.confirmar === "cita-" + a.id ? "Sí, eliminar definitivamente" : "Eliminar cita"}</button>
+          <p class="xs muted">${S.ui.confirmar === "cita-" + a.id ? "Tocá de nuevo para confirmar. Se borra del todo y el horario queda libre. Si la clienta avisó que no viene, mejor usá Estado → Cancelada." : "Para reservas de prueba o cargadas por error."}</p></section>
       </div></div>`;
   }
 
@@ -382,6 +384,16 @@
   A["ag.open"] = (el) => { S.ui.open = el.dataset.v; if (S.ui.route !== "agenda") { S.go("agenda"); return false; } return "top"; };
   A["ag.notas"] = () => { S.save(); S.toast("Notas guardadas."); return false; };
   EG.changes["ag.estadoSel"] = (t) => { S.db.appts.find((x) => x.id === t.dataset.a).estado = t.value; S.save(); };
+  A["ag.eliminar"] = (el) => {
+    const id = el.dataset.a;
+    if (S.ui.confirmar !== "cita-" + id) { S.ui.confirmar = "cita-" + id; return; }
+    S.ui.confirmar = null;
+    S.db.appts = S.db.appts.filter((a) => a.id !== id);
+    S.ui.open = null;
+    S.save();
+    S.toast("Cita eliminada.");
+    return "top";
+  };
   A["ag.close"] = () => { S.ui.open = null; S.ui.avisar = null; return "top"; };
   // Marca la cita como recordada (el link abre WhatsApp igual, porque no se cancela el click).
   A["rec.enviado"] = (el) => {
