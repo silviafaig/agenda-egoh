@@ -18,6 +18,10 @@
 <script src="js/vendor/qrcode.js"></script>
 <script src="js/vendor/supabase.js"></script>
 <script src="js/config.js"></script>
+<script>
+  // La dirección larga de Cloudflare pasa sola a la definitiva (mantiene la página: reserva, cita o panel).
+  (function () { var c = window.EG_CONFIG; if (c && c.appUrl && location.hostname === "agenda-showroom.pages.dev") location.replace(c.appUrl.replace(/\/?$/, "/") + location.search + location.hash); })();
+</script>
 <script src="js/icons.js"></script>
 <script src="js/core.js"></script>
 <script src="js/seed.js"></script>

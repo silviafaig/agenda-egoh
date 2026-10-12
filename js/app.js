@@ -36,8 +36,13 @@
     if (!ok) S.toast("No se pudo guardar: el navegador se quedó sin espacio.");
     return ok;
   };
-  S.publicLink = () => location.href.split("#")[0] + "#/reservar";
-  S.citaLink = (a) => location.href.split("#")[0] + "#/cita/" + a.id + (a._token ? "." + a._token : "");
+  // Links para compartir: la dirección definitiva (config.appUrl); en las versiones de prueba, la dirección actual.
+  const base = () => {
+    const c = window.EG_CONFIG || {};
+    return c.appUrl && !/^etapa|^localhost|^127\./.test(location.hostname) && location.protocol !== "file:" ? c.appUrl.replace(/\/?$/, "/") : location.href.split("#")[0];
+  };
+  S.publicLink = () => base() + "#/reservar";
+  S.citaLink = (a) => base() + "#/cita/" + a.id + (a._token ? "." + a._token : "");
 
   let toastTimer = null;
   S.toast = (msg) => {
