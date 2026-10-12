@@ -8,6 +8,7 @@
   const P = EG.panel;
   const { esc, money, fechaLarga, DIAS, icon: I } = EG;
   const A = EG.actions;
+  EG.SOPORTE_WA = "5491153836089"; // soporte de la app (Sil)
 
   const sec = (titulo, desc, cuerpo) => `<section class="card stack"><div><h3>${titulo}</h3>${desc ? `<p class="small muted">${desc}</p>` : ""}</div>${cuerpo}</section>`;
   const fld = (id, label, key, type, extra) => `<label class="f" for="${id}"><span>${label}</span><input class="t${type === "number" ? " num" : ""}" id="${id}" type="${type || "text"}" value="${esc(S.ui.draft[key])}" data-bind="draft.${key}" ${extra || ""}></label>`;
@@ -150,13 +151,14 @@
   }
   P.VISTAS.perfil = () => {
     const s = S.db.settings;
-    if (!S.ui.draft) S.ui.draft = { nombre: s.nombre, direccion: s.direccion, info: s.info };
+    if (!S.ui.draft) S.ui.draft = { nombre: s.nombre, direccion: s.direccion, info: s.info, whatsappShowroom: s.whatsappShowroom ? "+" + s.whatsappShowroom : "", instagram: s.instagram ? "@" + s.instagram : "" };
     const d = S.ui.draft;
     return `${P.title("Perfil público", "Lo que ven las clientas al reservar.", `<button type="button" class="btn sm" data-act="verPublica">${I("external-link", 15)}Ver como clienta</button><button type="submit" form="perfil-form" class="btn sm dark">Guardar cambios</button>`)}
       ${wrap(`${errHtml()}<form class="stack lg" id="perfil-form" novalidate>
         ${sec("Imagen", "Si no subís un logo, se muestra el nombre en letra serif (“" + esc(String(s.nombre).toLowerCase()) + ".”).", imgPicker("Logo", "logo", "perfil.logo", 120) + imgPicker("Portada", "portada", "perfil.portada", 220))}
         ${sec("Datos del showroom", "", `${fld("pp-nombre", "Nombre del showroom", "nombre")}${fld("pp-dir", "Dirección", "direccion")}
-          <label class="f" for="pp-info">Texto informativo<textarea class="t" id="pp-info" data-bind="draft.info">${esc(d.info)}</textarea></label>`)}</form>`)}`;
+          <label class="f" for="pp-info">Texto informativo<textarea class="t" id="pp-info" data-bind="draft.info">${esc(d.info)}</textarea></label>`)}
+        ${sec("Contacto", "Aparecen como botones en tu página de reservas. Dejalos vacíos para no mostrarlos.", `${fld("pp-wa", "WhatsApp del showroom", "whatsappShowroom", "tel", 'inputmode="tel" placeholder="11 5555 0101"')}${fld("pp-ig", "Instagram", "instagram", "text", 'placeholder="@tumarca"')}`)}</form>`)}`;
   };
   const leerImg = (key, maxW) => (input) => {
     const f = input.files[0];
@@ -170,13 +172,15 @@
   EG.submits["perfil-form"] = () => {
     const d = S.ui.draft, s = S.db.settings;
     if (!d.nombre.trim()) { S.ui.draftErr = "Escribí el nombre del showroom."; return; }
+    const wa = String(d.whatsappShowroom || "").trim() ? EG.normalizePhone(d.whatsappShowroom) : "";
+    if (wa === null) { S.ui.draftErr = "Revisá el WhatsApp: escribilo con código de área, por ejemplo 11 5555 0101."; return; }
     for (const k of ["logo", "portada"]) {
       if (d[k + "Nuevo"]) {
         EG.guardarFoto(k, d[k + "Nuevo"]).then((ref) => { s[k] = ref; S.save(); S.render(); })
           .catch((e) => S.toast("La imagen no se pudo guardar" + (e && e.message ? ": " + e.message : ".")));
       } else if (d[k + "Quitar"]) { if (s[k] === "local") EG.store.fotoDel(k); s[k] = ""; }
     }
-    Object.assign(s, { nombre: d.nombre.trim(), direccion: d.direccion.trim(), info: d.info.trim() });
+    Object.assign(s, { nombre: d.nombre.trim(), direccion: d.direccion.trim(), info: d.info.trim(), whatsappShowroom: wa, instagram: EG.igUser(d.instagram) });
     S.save();
     S.ui.draft = null;
     S.ui.draftErr = "";
@@ -382,5 +386,5 @@
     ["¿Por qué no me llegan las reservas de otras personas?", "En esta primera etapa los datos se guardan en este navegador. En la etapa 2 se conecta la base de datos y las reservas llegan desde cualquier celular."]
   ];
   P.VISTAS.ayuda = () => `${P.title("Ayuda")}${wrap(`<div class="rows">${FAQ.map((f) => `<details class="tree" style="padding:0 14px"><summary style="grid-template-columns:1fr"><span class="nm b">${esc(f[0])}</span></summary><p class="small muted" style="padding:0 0 14px 16px">${esc(f[1])}</p></details>`).join("")}</div>
-      <section class="card stack"><h3>¿Necesitás algo más?</h3><a class="btn sm dark" style="align-self:flex-start" href="${esc("https://wa.me/?text=" + encodeURIComponent("Hola, tengo una consulta sobre la Agenda Showroom"))}" target="_blank" rel="noopener">${I("message-circle", 15)}Escribinos por WhatsApp</a></section>`)}`;
+      <section class="card stack"><h3>¿Necesitás algo más?</h3><a class="btn sm dark" style="align-self:flex-start" href="${esc(EG.waLink(EG.SOPORTE_WA, "Hola, tengo una consulta sobre la Agenda Showroom"))}" target="_blank" rel="noopener">${I("message-circle", 15)}Escribinos por WhatsApp</a></section>`)}`;
 })();

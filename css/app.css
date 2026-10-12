@@ -424,3 +424,4 @@ body.is-public .toast { bottom: 24px; }
   .stat b { font-size: 20px; }
   .bnav button { font-size: 11px; }
 }
+.contacto { gap: 8px; margin-top: -4px; }

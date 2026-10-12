@@ -164,6 +164,11 @@
   EG.waLink = function (phone, text) {
     return "https://wa.me/" + String(phone).replace(/\D/g, "") + "?text=" + encodeURIComponent(text);
   };
+  // "@egoh.ar", "egoh.ar" o la URL del perfil -> "egoh.ar"
+  EG.igUser = function (raw) {
+    var s = String(raw || "").trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "");
+    return s.split(/[/?#\s]/)[0];
+  };
   EG.videoLink = function (a) { return "https://meet.jit.si/" + a.sala; };
 
   function linea(it, getProd, conPrecio) {

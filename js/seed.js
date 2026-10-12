@@ -32,6 +32,8 @@
       fechasEspeciales: [],
       opcionesComoCompra: ["1ra compra", "Emprendimiento", "Revendedora", "Comercio", "Uso personal"],
       saludoNombre: "Sil",
+      whatsappShowroom: "5491140354792",
+      instagram: "egoh.ar",
       logo: "",
       portada: ""
     };

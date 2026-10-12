@@ -42,6 +42,9 @@
       <h1>${titulo}</h1>${sub ? `<p class="muted">${sub}</p>` : ""}</div>`;
   }
 
+  const contacto = (s) => (s.whatsappShowroom || s.instagram
+    ? `<div class="row contacto">${s.instagram ? `<a class="btn xs" href="https://instagram.com/${encodeURIComponent(s.instagram)}" target="_blank" rel="noopener">${I("instagram", 14)}Instagram</a>` : ""}${s.whatsappShowroom ? `<a class="btn xs" href="${esc(EG.waLink(s.whatsappShowroom, "Hola, tengo una consulta"))}" target="_blank" rel="noopener">${I("message-circle", 14)}WhatsApp</a>` : ""}</div>`
+    : "");
   const P1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
   /* ---------- pasos ---------- */
@@ -56,6 +59,7 @@
         ${b.tipo === "presencial" ? `<p>${I("map-pin", 16)}<span>${esc(s.direccion)}</span></p>` : ""}
         <p>${I("clock", 16)}<span>Solo con cita previa · ${esc(s.duracion)} min</span></p>
         ${s.compraMinima > 0 ? `<p>${I("shopping-bag", 16)}<span>${minimoTxt(s)}</span></p>` : ""}</div>
+      ${contacto(s)}
       <div class="options">
         ${opt("presencial", "map-pin", "Visita al showroom", esc(s.duracion) + " min · Ves y probás las prendas en persona" + (barrio(s) ? " · " + esc(barrio(s)) : "") + ".")}
         ${opt("video", "video", "Videollamada", esc(s.duracion) + " min · Te mostramos las prendas en vivo por videollamada de WhatsApp.")}
