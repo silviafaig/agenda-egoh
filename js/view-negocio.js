@@ -173,7 +173,7 @@
     for (const k of ["logo", "portada"]) {
       if (d[k + "Nuevo"]) {
         EG.guardarFoto(k, d[k + "Nuevo"]).then((ref) => { s[k] = ref; S.save(); S.render(); })
-          .catch(() => S.toast("La imagen no se pudo guardar."));
+          .catch((e) => S.toast("La imagen no se pudo guardar" + (e && e.message ? ": " + e.message : ".")));
       } else if (d[k + "Quitar"]) { if (s[k] === "local") EG.store.fotoDel(k); s[k] = ""; }
     }
     Object.assign(s, { nombre: d.nombre.trim(), direccion: d.direccion.trim(), info: d.info.trim() });

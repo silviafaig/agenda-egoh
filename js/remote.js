@@ -145,7 +145,7 @@
   R.subirFoto = async function (nombre, dataUrl) {
     const blob = await (await fetch(dataUrl)).blob();
     const path = R.showroom.id + "/" + nombre + "-" + Date.now() + ".jpg";
-    const { error } = await sb.storage.from("fotos").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+    const { error } = await sb.storage.from("fotos").upload(path, blob, { contentType: "image/jpeg" });
     if (error) throw new Error(error.message);
     return sb.storage.from("fotos").getPublicUrl(path).data.publicUrl;
   };
