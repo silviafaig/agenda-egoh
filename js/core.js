@@ -117,6 +117,39 @@
     });
     return out;
   };
+  /* ---------- reglas de reserva (solo para clientas; el panel puede agendar siempre) ---------- */
+  var num = function (v, def) { var n = Number(v); return v === "" || v == null || isNaN(n) ? def : n; };
+  EG.reglas = function (s) {
+    return { minHoras: num(s.anticipacionMinHoras, 0), maxDias: num(s.anticipacionMaxDias, 0),
+      cambiosHoras: num(s.cambiosMinHoras, 0), maxReprog: num(s.maxReprogramaciones, 0), abierta: s.aceptaReservas !== false };
+  };
+  // Horas que faltan para una fecha y hora.
+  EG.horasHasta = function (date, h, now) {
+    var d = EG.parseYmd(date); var m = EG.toMin(h);
+    d.setHours(Math.floor(m / 60), m % 60, 0, 0);
+    return (d.getTime() - (now || new Date()).getTime()) / 3600000;
+  };
+  EG.dentroDePlazo = function (s, date, h, now) {
+    var r = EG.reglas(s), cur = now || new Date();
+    if (EG.horasHasta(date, h, cur) < r.minHoras) return false;
+    if (r.maxDias > 0) { var lim = new Date(cur.getTime()); lim.setDate(lim.getDate() + r.maxDias); if (date > EG.ymd(lim)) return false; }
+    return true;
+  };
+  // Horarios que ve la clienta: los libres que además respetan la anticipación.
+  EG.slotsCliente = function (settings, appts, date, now, bloqueos, ignorarId) {
+    return EG.slotsFor(settings, appts, date, now, bloqueos, ignorarId).map(function (x) {
+      return x.off || EG.dentroDePlazo(settings, date, x.h, now) ? x : { h: x.h, off: true, ocupado: false, bloqueado: false, plazo: true };
+    });
+  };
+  // ¿La clienta puede cancelar o reprogramar esta cita desde su link?
+  EG.puedeCambiar = function (s, a, now) {
+    var r = EG.reglas(s);
+    return r.cambiosHoras <= 0 || EG.horasHasta(a.fecha, a.hora, now) >= r.cambiosHoras;
+  };
+  EG.puedeReprogramar = function (s, a, now) {
+    var r = EG.reglas(s);
+    return EG.puedeCambiar(s, a, now) && (r.maxReprog <= 0 || (Number(a.reprogramaciones) || 0) < r.maxReprog);
+  };
   EG.isSlotFree = function (settings, appts, date, hora, now, bloqueos, ignorarId) {
     return EG.slotsFor(settings, appts, date, now, bloqueos, ignorarId).some(function (s) { return s.h === hora && !s.off; });
   };

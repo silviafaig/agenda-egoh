@@ -193,7 +193,8 @@
     if (!S.ui.draft) {
       const f = s.franjas;
       S.ui.draft = { dias: s.dias.slice(), f1d: f[0] ? f[0][0] : "", f1h: f[0] ? f[0][1] : "", f2d: f[1] ? f[1][0] : "", f2h: f[1] ? f[1][1] : "", duracion: s.duracion,
-        fd: "", fh: "", fm: "", ed: "", e1d: "", e1h: "", e2d: "", e2h: "", ferr: "", eerr: "" };
+        fd: "", fh: "", fm: "", ed: "", e1d: "", e1h: "", e2d: "", e2h: "", ferr: "", eerr: "",
+        acepta: s.aceptaReservas !== false, minH: s.anticipacionMinHoras ?? 0, maxD: s.anticipacionMaxDias ?? 0, cambH: s.cambiosMinHoras ?? 0, maxR: s.maxReprogramaciones ?? 0 };
     }
     const d = S.ui.draft;
     const hoy = EG.ymd(new Date());
@@ -201,9 +202,12 @@
     const esp = s.fechasEspeciales.slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
     return `${P.title("Horarios y disponibilidad", "Cuándo se pueden reservar citas.", `<button type="submit" form="hor-form" class="btn sm dark">Guardar cambios</button>`)}
       ${wrap(`${errHtml()}<form class="stack lg" id="hor-form" novalidate>
+        ${sec("Recepción de reservas", d.acepta ? "Las clientas pueden reservar desde tu link." : "Tu página muestra “Por ahora no estamos tomando reservas”. Las citas ya agendadas siguen igual.", `<div class="seg" style="align-self:flex-start"><button type="button" data-act="hor.acepta" data-v="1" aria-pressed="${d.acepta}">Abiertas</button><button type="button" data-act="hor.acepta" data-v="0" aria-pressed="${!d.acepta}">Pausadas</button></div>`)}
         ${sec("Días de atención", "", `<div class="pills">${[1, 2, 3, 4, 5, 6, 0].map((n) => `<button type="button" class="pill" data-act="hor.dia" data-v="${n}" aria-pressed="${d.dias.indexOf(n) >= 0}">${DIAS[n]}</button>`).join("")}</div>`)}
         ${sec("Franjas horarias", "Dejá la tarde vacía si atendés en un solo turno.", `<div class="fgrid two">${fld("h-f1d", "Mañana desde", "f1d", "time")}${fld("h-f1h", "Mañana hasta", "f1h", "time")}${fld("h-f2d", "Tarde desde", "f2d", "time")}${fld("h-f2h", "Tarde hasta", "f2h", "time")}</div>
-          ${fld("h-dur", "Duración de la cita (minutos)", "duracion", "number", 'min="10" step="5" inputmode="numeric" style="max-width:160px"')}`)}</form>
+          ${fld("h-dur", "Duración de la cita (minutos)", "duracion", "number", 'min="10" step="5" inputmode="numeric" style="max-width:160px"')}`)}
+        ${sec("Anticipación", "Con 0 no hay límite. Desde el panel podés agendar siempre, sin estas reglas.", `<div class="fgrid two">${fld("h-minh", "Reservar con al menos (horas)", "minH", "number", 'min="0" step="1" inputmode="numeric"')}${fld("h-maxd", "Reservar hasta (días adelante)", "maxD", "number", 'min="0" step="1" inputmode="numeric"')}</div>`)}
+        ${sec("Cancelar y reprogramar", "Lo que la clienta puede hacer sola desde el link de su cita. Con 0 no hay límite.", `<div class="fgrid two">${fld("h-camb", "Hasta cuántas horas antes", "cambH", "number", 'min="0" step="1" inputmode="numeric"')}${fld("h-maxr", "Veces que puede reprogramar", "maxR", "number", 'min="0" step="1" inputmode="numeric"')}</div>`)}</form>
         ${sec("Feriados y vacaciones", "Esos días no se puede reservar.", `${feriados.length ? `<div class="rows">${feriados.map((f) => `<div class="rowitem"><span class="grow small"><b>${esc(fechaLarga(f.desde))}${f.hasta && f.hasta !== f.desde ? " al " + esc(fechaLarga(f.hasta)) : ""}</b>${f.motivo ? " · " + esc(f.motivo) : ""}${(f.hasta || f.desde) < hoy ? ' <span class="muted">(ya pasó)</span>' : ""}</span>
             <button type="button" class="iconbtn sm" data-act="hor.quitarFeriado" data-v="${esc(f.desde + "|" + (f.hasta || ""))}" aria-label="Quitar">${I("x", 14)}</button></div>`).join("")}</div>` : `<p class="small muted">No hay fechas cargadas.</p>`}
           <div class="fgrid two">${fld("h-fd", "Desde", "fd", "date")}${fld("h-fh", 'Hasta <span class="hint">vacío = un solo día</span>', "fh", "date")}<div class="full">${fld("h-fm", "Motivo", "fm", "text", 'placeholder="Ej: Feriado, vacaciones de invierno"')}</div></div>
@@ -214,6 +218,7 @@
           ${d.eerr ? `<p class="err">${esc(d.eerr)}</p>` : ""}<button type="button" class="btn sm" style="align-self:flex-start" data-act="hor.addEsp">${I("plus", 15)}Agregar</button>`)}`)}`;
   };
   const franjaOk = (a, b) => a && b && EG.toMin(b) > EG.toMin(a);
+  A["hor.acepta"] = (el) => { S.ui.draft.acepta = el.dataset.v === "1"; };
   A["hor.dia"] = (el) => { const d = S.ui.draft, n = +el.dataset.v; d.dias = d.dias.indexOf(n) >= 0 ? d.dias.filter((x) => x !== n) : d.dias.concat(n); };
   A["hor.addFeriado"] = () => {
     const d = S.ui.draft;
@@ -254,7 +259,9 @@
     if (!franjas.length) return fail("Cargá al menos una franja horaria.");
     const duracion = Math.round(Number(d.duracion));
     if (!(duracion >= 10)) return fail("La duración de la cita tiene que ser de al menos 10 minutos.");
-    Object.assign(S.db.settings, { dias: d.dias.slice().sort(), franjas, duracion });
+    const ent = (v) => Math.max(0, Math.round(Number(v) || 0));
+    Object.assign(S.db.settings, { dias: d.dias.slice().sort(), franjas, duracion, aceptaReservas: !!d.acepta,
+      anticipacionMinHoras: ent(d.minH), anticipacionMaxDias: ent(d.maxD), cambiosMinHoras: ent(d.cambH), maxReprogramaciones: ent(d.maxR) });
     S.save();
     S.ui.draft = null;
     S.ui.draftErr = "";

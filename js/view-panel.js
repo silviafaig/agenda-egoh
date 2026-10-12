@@ -101,6 +101,7 @@
     const sinPrecio = !S.db.products.some((p) => p.precio > 0);
     const avisos = [];
     const rec = P.porRecordar();
+    if (S.db.settings.aceptaReservas === false) avisos.push([I("ban", 17), "Las reservas están pausadas: las clientas no pueden reservar desde tu link.", "nav", "Abrir", "horarios"]);
     if (rec.citas.length) avisos.push([I("message-circle", 17), `${U.plural(rec.citas.length, "cita")} ${rec.citas.length === 1 ? "es" : "son"} ${rec.etiqueta}: mandá ${rec.citas.length === 1 ? "el recordatorio" : "los recordatorios"} por WhatsApp.`, "mod.open", "Enviar", "recordatorios"]);
     if (sinMarcar.length) avisos.push([I("circle-alert", 17), `${U.plural(sinMarcar.length, "cita")} de días anteriores sin marcar asistencia.`, "aviso.sinMarcar", "Revisar"]);
     const vidHoy = deHoy.filter((a) => a.tipo === "video" && a.estado === "confirmada").length;

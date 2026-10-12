@@ -45,6 +45,14 @@
   const contacto = (s) => (s.whatsappShowroom || s.instagram
     ? `<div class="row contacto">${s.instagram ? `<a class="btn xs" href="https://instagram.com/${encodeURIComponent(s.instagram)}" target="_blank" rel="noopener">${I("instagram", 14)}Instagram</a>` : ""}${s.whatsappShowroom ? `<a class="btn xs" href="${esc(EG.waLink(s.whatsappShowroom, "Hola, tengo una consulta"))}" target="_blank" rel="noopener">${I("message-circle", 14)}WhatsApp</a>` : ""}</div>`
     : "");
+  const MOTIVOS = {
+    ocupado: "Ese horario se acaba de ocupar. Elegí otro.", bloqueado: "Ese horario se acaba de ocupar. Elegí otro.",
+    muy_pronto: "Ese horario está muy cerca: hay que reservar con más anticipación. Elegí otro.",
+    muy_lejos: "Todavía no se puede reservar para esa fecha. Elegí una más cercana.",
+    pausado: "En este momento no estamos tomando reservas.",
+    fuera_de_plazo: "Ya pasó el plazo para hacer cambios online. Escribinos por WhatsApp.",
+    limite_reprogramaciones: "Ya reprogramaste esta cita. Para otro cambio, escribinos por WhatsApp."
+  };
   const P1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
   /* ---------- pasos ---------- */
@@ -68,7 +76,7 @@
   }
 
   function slotsHtml(s, fecha, sel, act, ignorarId) {
-    const slots = EG.slotsFor(s, S.db.appts, fecha, null, S.db.bloqueos, ignorarId);
+    const slots = EG.slotsCliente(s, S.db.appts, fecha, null, S.db.bloqueos, ignorarId);
     if (!slots.some((x) => !x.off)) return `<p class="empty">No quedan horarios este día. Probá con otro.</p>`;
     const grupo = (titulo, ico, lista) => (lista.length
       ? `<div class="slotgroup"><h4 class="row">${I(ico, 15)}${titulo}</h4><div class="slots" role="group" aria-label="${titulo}">${lista.map((x) =>
@@ -79,7 +87,7 @@
 
   function daysHtml(s, sel, act, ignorarId) {
     const dias = EG.nextDays(s, 10);
-    const libre = (d) => EG.slotsFor(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
+    const libre = (d) => EG.slotsCliente(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
     return `<div class="days" data-keepscroll="dias" role="group" aria-label="Día">${dias.map((d) => {
       const x = EG.parseYmd(d);
       return `<button type="button" class="day" data-act="${act}" data-v="${d}" aria-pressed="${sel === d}" ${libre(d) ? "" : "disabled"} aria-label="${esc(fechaLarga(d))}"><span>${DIAS[x.getDay()]}</span><b>${x.getDate()}</b><span>${MESES[x.getMonth()]}</span></button>`;
@@ -88,7 +96,7 @@
   // Elige el primer día con lugar si el elegido ya no sirve.
   function fixFecha(s, obj, ignorarId) {
     const dias = EG.nextDays(s, 10);
-    const libre = (d) => EG.slotsFor(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
+    const libre = (d) => EG.slotsCliente(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
     if (!obj.fecha || dias.indexOf(obj.fecha) < 0 || !libre(obj.fecha)) { obj.fecha = dias.find(libre) || dias[0] || null; obj.hora = null; }
     return dias;
   }
@@ -241,8 +249,14 @@
       return wrap(`<h1>Tu cita está cancelada</h1>${datos}<button type="button" class="btn dark" data-act="pub.nueva">Reservar otra cita</button>`);
     }
     if (a.estado !== "confirmada") return wrap(`<h1>Hola, ${esc(a.nombre.split(" ")[0])}</h1>${datos}`);
-    let cuerpo = `<div class="row"><button type="button" class="btn dark" data-act="cita.modo" data-v="reprogramar">${I("calendar-days", 16)}Reprogramar</button>
-      <button type="button" class="btn danger" data-act="cita.modo" data-v="cancelar">Cancelar cita</button></div>`;
+    const r = EG.reglas(s);
+    const puede = EG.puedeCambiar(s, a), reprog = EG.puedeReprogramar(s, a);
+    const plazoTxt = r.cambiosHoras > 0 ? `Los cambios online se pueden hacer hasta ${U.plural(r.cambiosHoras, "hora")} antes de la cita.` : "";
+    let cuerpo = !puede
+      ? `<div class="sumblock"><p class="small">${esc(plazoTxt)} Para cancelar o cambiar el horario, escribinos.</p>${contacto(s)}</div>`
+      : `<div class="row">${reprog ? `<button type="button" class="btn dark" data-act="cita.modo" data-v="reprogramar">${I("calendar-days", 16)}Reprogramar</button>` : ""}
+      <button type="button" class="btn danger" data-act="cita.modo" data-v="cancelar">Cancelar cita</button></div>
+      ${!reprog ? `<p class="small muted">Ya reprogramaste esta cita. Para otro cambio, escribinos por WhatsApp.</p>` : plazoTxt ? `<p class="small muted">${esc(plazoTxt)}</p>` : ""}`;
     if (c.modo === "cancelar") {
       cuerpo = `<div class="sumblock"><h3>¿Cancelamos tu cita?</h3><p class="small muted">El horario queda libre para otra persona.</p>
         <div class="row"><button type="button" class="btn danger" data-act="cita.cancelar">Sí, cancelar</button><button type="button" class="btn" data-act="cita.modo" data-v="">No, volver</button></div></div>`;
@@ -263,6 +277,10 @@
     if (ui.splash) return `<div class="splash">${U.logo(s, "xl")}</div>`;
     if (ui.route === "cita") return citaPage();
     if (ui.done) return top() + confirmacion(ui.done);
+    if (!EG.reglas(s).abierta) {
+      return top() + `<main class="pubwrap narrow"><h1>Por ahora no estamos tomando reservas</h1>
+        <p class="muted">Volvé a entrar en unos días. Si tenés una consulta, escribinos.</p>${contacto(s)}</main>`;
+    }
     const pasos = [stepTipo, stepFecha, stepPrendas, stepDatos, stepResumen];
     return top() + `<main class="pubwrap${st === 0 || st >= 3 ? " narrow" : ""}">${pasos[st](s, b)}</main>`;
   };
@@ -348,7 +366,7 @@
     const ui = S.ui, b = ui.booking, s = S.db.settings;
     const wa = EG.normalizePhone(b.whatsapp);
     if (!wa || !b.comoCompra) { ui.step = 3; return "top"; }
-    if (!EG.isSlotFree(s, S.db.appts, b.fecha, b.hora, null, S.db.bloqueos)) {
+    if (!EG.isSlotFree(s, S.db.appts, b.fecha, b.hora, null, S.db.bloqueos) || !EG.dentroDePlazo(s, b.fecha, b.hora)) {
       b.hora = null;
       ui.step = 1;
       ui.slotMsg = "Ese horario se acaba de ocupar. Elegí otro.";
@@ -365,7 +383,7 @@
           if (r.error) {
             await R.refreshOcupados().catch(() => {});
             b.hora = null; ui.step = 1;
-            ui.slotMsg = r.error === "ocupado" || r.error === "bloqueado" ? "Ese horario se acaba de ocupar. Elegí otro." : "Ese horario ya no está disponible. Elegí otro.";
+            ui.slotMsg = MOTIVOS[r.error] || "Ese horario ya no está disponible. Elegí otro.";
           } else {
             R.notify("reserva", r.id, r.token);
             ui.done = Object.assign({ id: r.id, _token: r.token, sala: r.sala, fecha: b.fecha, hora: b.hora, tipo: b.tipo, estado: "confirmada", prendas }, datos);
@@ -399,12 +417,13 @@
     if (R.on) {
       R.cancelarCita(S.ui.citaId, S.ui.citaToken).then((r) => {
         if (r && r.ok) { R.notify("cambio", S.ui.citaId, S.ui.citaToken); S.ui.citaRemota.estado = "cancelada"; S.ui.cita = null; S.toast("Tu cita quedó cancelada."); }
-        else S.toast("No se pudo cancelar. Escribinos por WhatsApp.");
+        else S.toast(MOTIVOS[r && r.error] || "No se pudo cancelar. Escribinos por WhatsApp.");
         S.render();
       });
       return false;
     }
     const a = S.db.appts.find((x) => x.id === S.ui.citaId);
+    if (!EG.puedeCambiar(S.db.settings, a)) { S.toast(MOTIVOS.fuera_de_plazo); return; }
     a.estado = "cancelada";
     S.ui.cita = null;
     S.save();
@@ -414,14 +433,16 @@
     if (R.on) {
       const a = S.ui.citaRemota, c = S.ui.cita;
       R.reprogramarCita(a.id, S.ui.citaToken, c.fecha, c.hora).then(async (r) => {
-        if (r && r.ok) { R.notify("cambio", a.id, S.ui.citaToken); a.fecha = c.fecha; a.hora = c.hora; S.ui.cita = null; S.toast("Listo: tu cita quedó para el " + fechaLarga(a.fecha) + " a las " + a.hora + " hs."); }
-        else { c.hora = null; await R.refreshOcupados().catch(() => {}); S.toast("Ese horario se acaba de ocupar. Elegí otro."); }
+        if (r && r.ok) { R.notify("cambio", a.id, S.ui.citaToken); a.fecha = c.fecha; a.hora = c.hora; a.reprogramaciones = (Number(a.reprogramaciones) || 0) + 1; S.ui.cita = null; S.toast("Listo: tu cita quedó para el " + fechaLarga(a.fecha) + " a las " + a.hora + " hs."); }
+        else { c.hora = null; await R.refreshOcupados().catch(() => {}); S.toast(MOTIVOS[r && r.error] || "Ese horario ya no está disponible. Elegí otro."); }
         S.render();
       });
       return false;
     }
     const a = S.db.appts.find((x) => x.id === S.ui.citaId), c = S.ui.cita, s = S.db.settings;
-    if (!EG.isSlotFree(s, S.db.appts, c.fecha, c.hora, null, S.db.bloqueos, a.id)) { S.toast("Ese horario se acaba de ocupar. Elegí otro."); c.hora = null; return; }
+    if (!EG.isSlotFree(s, S.db.appts, c.fecha, c.hora, null, S.db.bloqueos, a.id) || !EG.dentroDePlazo(s, c.fecha, c.hora)) { S.toast("Ese horario ya no está disponible. Elegí otro."); c.hora = null; return; }
+    if (!EG.puedeReprogramar(s, a)) { S.toast(MOTIVOS.limite_reprogramaciones); return; }
+    a.reprogramaciones = (Number(a.reprogramaciones) || 0) + 1;
     a.fecha = c.fecha;
     a.hora = c.hora;
     S.ui.cita = null;
