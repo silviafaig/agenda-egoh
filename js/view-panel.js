@@ -200,7 +200,8 @@
         <button type="button" data-act="ag.vista" data-v="calendario" aria-pressed="${vista === "calendario"}">${I("calendar-range", 14)} Calendario</button></div>
       ${vista === "lista" ? `<div class="daterange"><input class="t num" type="date" value="${desde}" data-change="ag.desde" aria-label="Desde"><span class="muted">a</span><input class="t num" type="date" value="${hasta}" data-change="ag.hasta" aria-label="Hasta"></div>
         <label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar</span><input class="t" type="search" placeholder="Buscar por nombre o teléfono" value="${esc(S.ui.agQ)}" data-bind="agQ" data-filter=".alist .acard"></label>` : ""}
-      <button type="button" class="btn sm light" data-act="ag.export">${I("download", 15)}Exportar</button></div>`;
+      <button type="button" class="btn sm light" data-act="ag.export">${I("download", 15)}Exportar</button>
+      <label class="btn sm light" style="cursor:pointer">${I("plus", 15)}Importar<input class="sr-only" type="file" accept=".xlsx,.csv" data-change="imp.archivo"></label></div>`;
     return `${P.title("Agenda", "Organizá tus citas y prepará cada visita.", `<button type="button" class="btn sm dark" data-act="mod.open" data-v="reserva">${I("plus", 15)}Nueva reserva</button>
         <button type="button" class="btn sm" data-act="mod.open" data-v="bloqueo">${I("ban", 15)}Bloquear horario</button>`)}
       ${tools}${vista === "lista" ? lista(desde, hasta) : semana()}`;
@@ -412,7 +413,7 @@
     ["email", "Email", (a) => a.email], ["zona", "Zona", (a) => a.zona], ["comoCompra", "Cómo compra", (a) => a.comoCompra],
     ["prendas", "Prendas", (a) => (a.prendas || []).map((i) => EG.itemName(i, S.prod) + " T" + i.talle).join(" | ")],
     ["seLlevo", "Se llevó", (a) => (a.prendas || []).filter((i) => i.seLlevo === true).map((i) => EG.itemName(i, S.prod) + " T" + i.talle).join(" | ")],
-    ["queBusca", "Busca", (a) => a.queBusca], ["notas", "Notas", (a) => a.notas], ["origen", "Origen", (a) => (a.origen === "manual" ? "Carga manual" : "Clienta")]
+    ["queBusca", "Busca", (a) => a.queBusca], ["notas", "Notas", (a) => a.notas], ["origen", "Origen", (a) => (a.origen === "manual" ? "Carga manual" : a.origen === "importada" ? "Importada" : "Clienta")]
   ];
   const PERIODOS = [["hoy", "Hoy"], ["semana", "Esta semana"], ["mes", "Este mes"], ["30", "Últimos 30 días"], ["custom", "Personalizado"]];
   function rangoExp(m) {
@@ -437,6 +438,42 @@
         <div class="pills">${COLS.map(([k, t]) => chip("exp.col", k, !!m.cols[k], t)).join("")}</div></div>
       <div class="row between"><span class="small"><b>A exportar:</b> ${U.plural(n, "fila")}</span>
         <button type="button" class="btn dark" data-act="exp.bajar" ${n && nc ? "" : "disabled"}>${I("download", 15)}Exportar</button></div></div>`;
+  };
+  /* importar desde Turnito u otra agenda (.xlsx o .csv) */
+  EG.changes["imp.archivo"] = (input) => {
+    const f = input.files[0];
+    if (!f) return false;
+    EG.importar.leer(f)
+      .then((filas) => {
+        const res = EG.importar.analizar(filas, S.db, S.db.settings);
+        if (!res.items.length) { S.toast("No encontramos citas ni clientas en ese archivo."); return; }
+        S.ui.modal = { kind: "importar", archivo: f.name, res };
+        S.render();
+      })
+      .catch(() => S.toast("No pudimos leer ese archivo. Tiene que ser .xlsx o .csv."));
+    input.value = "";
+    return false;
+  };
+  P.MODALES.importar = (m) => {
+    const r = m.res, citas = r.tipo === "citas";
+    const van = r.items.filter((x) => x.ok && !x.fuera).length;
+    return `<div class="modal" role="dialog" aria-modal="true" aria-label="Importar">${mhead(citas ? "Importar citas" : "Importar clientas")}
+      <p class="small muted">${esc(m.archivo)} · ${U.plural(r.items.length, "fila")}. Revisá la lista y destildá lo que no quieras cargar.</p>
+      <div class="pickbox" data-keepscroll="pickimp" style="max-height:340px">${r.items.map((x, i) => `<label class="rowitem" style="cursor:pointer;align-items:flex-start">
+        <input type="checkbox" ${x.ok && !x.fuera ? "checked" : ""} ${x.ok ? "" : "disabled"} data-change="imp.toggle" data-v="${i}" style="margin-top:3px">
+        <span class="grow small"><b>${esc(x.d.nombre || "Sin nombre")}</b>${citas ? ` · ${esc(x.d.fecha ? fechaLarga(x.d.fecha) : "?")} ${esc(x.d.hora)} · ${esc((Object.fromEntries(U.ESTADOS))[x.d.estado] || "")}` : ""}
+          <span class="rsub num">${x.d.whatsapp ? "+" + esc(x.d.whatsapp) : ""}${x.d.email ? " · " + esc(x.d.email) : ""}</span>
+          ${x.motivo ? `<span class="xs muted">${esc(x.motivo)}</span>` : ""}${x.aviso ? `<span class="xs" style="color:var(--accent)">${esc(x.aviso)}</span>` : ""}</span></label>`).join("")}</div>
+      ${citas ? `<p class="xs muted">Las citas importadas ocupan su horario y las clientas se suman a Clientas.</p>` : ""}
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Cancelar</button>
+        <button type="button" class="btn dark" data-act="imp.aplicar" ${van ? "" : "disabled"}>Importar ${U.plural(van, citas ? "cita" : "clienta")}</button></div></div>`;
+  };
+  EG.changes["imp.toggle"] = (el) => { const x = S.ui.modal.res.items[+el.dataset.v]; x.fuera = !el.checked; return true; };
+  A["imp.aplicar"] = () => {
+    const r = S.ui.modal.res, n = EG.importar.aplicar(r, S.db);
+    S.ui.modal = null;
+    S.save();
+    S.toast(n ? "Listo: se importaron " + U.plural(n, r.tipo === "citas" ? "cita" : "clienta") + "." : "No se importó nada.");
   };
   A["ag.export"] = () => {
     S.ui.modal = { kind: "exportar", per: "mes", desde: "", hasta: "", bloq: false,

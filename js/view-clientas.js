@@ -17,7 +17,7 @@
       .map((c) => ({ c, st: EG.clientaStats(S.db, c) }))
       .filter((x) => !filtro || x.c.comoCompra === filtro)
       .sort((a, b) => (b.st.citas[0] ? b.st.citas[0].fecha : "").localeCompare(a.st.citas[0] ? a.st.citas[0].fecha : "") || a.c.nombre.localeCompare(b.c.nombre));
-    return `${P.title("Clientas", U.plural(S.db.clientas.length, "clienta"), `<button type="button" class="btn sm light" data-act="cl.export">${I("download", 15)}Exportar</button>
+    return `${P.title("Clientas", U.plural(S.db.clientas.length, "clienta"), `<button type="button" class="btn sm light" data-act="cl.export">${I("download", 15)}Exportar</button><label class="btn sm light" style="cursor:pointer">${I("plus", 15)}Importar<input class="sr-only" type="file" accept=".xlsx,.csv" data-change="imp.archivo"></label>
         <button type="button" class="btn sm dark" data-act="mod.open" data-v="clienta">${I("user-plus", 15)}Nueva clienta</button>`)}
       <div class="stack" data-fscope>
         <label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar clienta</span><input class="t" type="search" placeholder="Buscar por nombre, teléfono o email" value="${esc(S.ui.clQ)}" data-bind="clQ" data-filter=".crow"></label>
