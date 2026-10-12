@@ -10,7 +10,7 @@
  * Configuración (Configuración del proyecto → Propiedades de la secuencia de comandos):
  *  SUPABASE_URL          https://raeuxuvshvpczwpnxirk.supabase.co
  *  SUPABASE_SERVICE_KEY  la clave secreta (service_role / secret) de Supabase. No la compartas.
- *  APP_URL               dirección de la agenda, por ejemplo https://etapa2.agenda-showroom.pages.dev/
+ *  APP_URL               dirección de la agenda, por ejemplo https://turnos.egohmayorista.com.ar/
  *  SHOWROOM              egoh
  *  AVISOS_A              mail donde te llegan los avisos (si falta, se usa el de esta cuenta)
  */
