@@ -218,11 +218,31 @@ function resumenDiario() {
   });
 }
 
+/* ---------------- 4: copia de seguridad semanal ---------------- */
+// Guarda en tu Google Drive (carpeta "Agenda Showroom - copias") un archivo con todo: configuración, catálogo,
+// clientas, citas y bloqueos. Se conservan las últimas 12 copias.
+function copiaSemanal() {
+  const conf = cfg_();
+  const s = showroom_(conf);
+  const tabla = (t) => sb_(conf, t + "?showroom_id=eq." + s.id + "&select=*");
+  const datos = { fecha: new Date().toISOString(), showroom: conf.slug, config: s.config,
+    productos: tabla("productos"), clientas: tabla("clientas"), citas: tabla("citas"), bloqueos: tabla("bloqueos") };
+  const nombreCarpeta = "Agenda Showroom - copias";
+  const it = DriveApp.getFoldersByName(nombreCarpeta);
+  const carpeta = it.hasNext() ? it.next() : DriveApp.createFolder(nombreCarpeta);
+  carpeta.createFile("copia-" + conf.slug + "-" + Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd") + ".json", JSON.stringify(datos, null, 1), "application/json");
+  const archivos = [];
+  const fs = carpeta.getFiles();
+  while (fs.hasNext()) archivos.push(fs.next());
+  archivos.sort((a, b) => b.getDateCreated() - a.getDateCreated()).slice(12).forEach((f) => f.setTrashed(true));
+}
+
 /* ---------------- instalación ---------------- */
-// Ejecutar UNA vez: crea la tarea diaria de las 10 (hora de Argentina).
+// Ejecutar UNA vez: crea la tarea diaria de las 10 y la copia de seguridad de los lunes a las 8 (hora de Argentina).
 function instalarTareaDiaria() {
-  ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === "resumenDiario").forEach((t) => ScriptApp.deleteTrigger(t));
+  ScriptApp.getProjectTriggers().filter((t) => ["resumenDiario", "copiaSemanal"].indexOf(t.getHandlerFunction()) >= 0).forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger("resumenDiario").timeBased().everyDays(1).atHour(10).inTimezone(TZ).create();
+  ScriptApp.newTrigger("copiaSemanal").timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).inTimezone(TZ).create();
 }
 // Para probar: te manda a vos el resumen del próximo día de atención y los recordatorios a las clientas (si hay citas).
 function probarResumen() { resumenDiario(); }
