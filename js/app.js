@@ -126,7 +126,7 @@
     app.querySelectorAll("[data-keepscroll]").forEach((el) => { keep[el.dataset.keepscroll] = [el.scrollLeft, el.scrollTop]; });
     const pub = isPublic(S.ui.route);
     document.body.classList.toggle("is-public", pub);
-    app.innerHTML = S.loading ? `<div class="splash"><span class="logo">${EG.esc(String(S.db.settings.nombre || "").toLowerCase())}.</span></div>`
+    app.innerHTML = S.loading ? `<div class="splash" aria-busy="true"></div>`
       : R.on && R.error && !(pub && R.publicLoaded) ? `<main class="pubwrap narrow"><h1>No se pudo cargar</h1><p class="muted">${EG.esc(R.error)}</p><button type="button" class="btn dark" onclick="location.reload()">Reintentar</button></main>`
       : pub ? EG.views.publico() : R.on && (!R.user || !R.panel || R.recovery) ? EG.views.auth() : EG.views.panel();
     app.querySelectorAll("[data-keepscroll]").forEach((el) => {
