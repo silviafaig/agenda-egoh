@@ -9,7 +9,20 @@
 
   const R = EG.remote;
   const PASOS = ["Tipo de cita", "Día y horario", "Preselección", "Tus datos", "Resumen"];
-  const newBooking = () => ({ tipo: null, fecha: null, hora: null, prendas: [], nombre: "", whatsapp: "", email: "", zona: "", comoCompra: "", queBusca: "" });
+  // "Recordar mis datos": se guardan solo en este celular/computadora, nunca en otro lado.
+  const MIS_DATOS = "eg-mis-datos";
+  const leerDatos = () => { try { return JSON.parse(localStorage.getItem(MIS_DATOS) || "null"); } catch (e) { return null; } };
+  const guardarDatos = (b) => {
+    try {
+      if (b.recordar) localStorage.setItem(MIS_DATOS, JSON.stringify({ nombre: b.nombre.trim(), whatsapp: b.whatsapp.trim(), email: b.email.trim(), zona: b.zona.trim(), comoCompra: b.comoCompra }));
+      else localStorage.removeItem(MIS_DATOS);
+    } catch (e) { /* sin almacenamiento: no pasa nada */ }
+  };
+  const newBooking = () => {
+    const d = leerDatos() || {};
+    return { tipo: null, fecha: null, hora: null, prendas: [], nombre: d.nombre || "", whatsapp: d.whatsapp || "", email: d.email || "",
+      zona: d.zona || "", comoCompra: d.comoCompra || "", queBusca: "", recordar: true };
+  };
   S.ui.booking = newBooking();
 
   function resetBooking() {
@@ -172,6 +185,7 @@
           `<button type="button" class="pill" data-act="pub.como" data-v="${esc(k)}" aria-pressed="${b.comoCompra === k}">${esc(k)}</button>`).join("")}</div></div>
         <label class="f full" for="queBusca"><span>¿Qué estás buscando? <span class="hint">(opcional)</span></span><textarea class="t" id="queBusca" name="queBusca" data-bind="booking.queBusca" placeholder="Talles, colores, para qué temporada…">${esc(b.queBusca)}</textarea></label>
       </div>
+      <label class="check"><input type="checkbox" data-bind="booking.recordar" ${b.recordar ? "checked" : ""}>Recordar mis datos en este dispositivo</label>
       ${S.ui.formErr ? `<p class="err" role="alert">${esc(S.ui.formErr)}</p>` : ""}
       <button class="btn dark block" type="submit">Ver resumen</button></form>`;
   }
@@ -386,6 +400,7 @@
             ui.slotMsg = MOTIVOS[r.error] || "Ese horario ya no está disponible. Elegí otro.";
           } else {
             R.notify("reserva", r.id, r.token);
+            guardarDatos(b);
             ui.done = Object.assign({ id: r.id, _token: r.token, sala: r.sala, fecha: b.fecha, hora: b.hora, tipo: b.tipo, estado: "confirmada", prendas }, datos);
             if (R.panel) R.loadPanel().catch(() => {});
             else R.refreshOcupados().catch(() => {});
@@ -405,6 +420,7 @@
     }, datos);
     S.db.appts.push(a);
     S.save();
+    guardarDatos(b);
     ui.done = a;
     return "top";
   };
