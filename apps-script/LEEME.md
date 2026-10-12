@@ -11,4 +11,4 @@
      - `SHOWROOM` = `egoh`
 4. En el editor elegí la función `instalarTareaDiaria` → **Ejecutar**. Google pide permisos (mandar mails, conectarse a internet, tareas programadas): aceptá. Si dice "Google no verificó esta app": *Configuración avanzada → Ir a … (no seguro)*: es tu propio script.
 5. **Implementar → Nueva implementación** → tipo **Aplicación web** → Ejecutar como: **Yo** → Quién tiene acceso: **Cualquier usuario** → Implementar. Copiá la **URL de la aplicación web** (termina en `/exec`) y pasala para cargarla en `js/config.js` (`avisosUrl`).
-6. Prueba: hacé una reserva con tu mail → te llega la confirmación y el aviso. Para el resumen: función `probarResumen` → Ejecutar (llega si hay citas el próximo día de atención).
+6. Prueba: hacé una reserva con tu mail → te llega la confirmación y el aviso. Para el resumen: función `probarResumen` → Ejecutar (llega si hay citas el próximo día de atención). La misma tarea diaria manda a cada clienta que dejó su mail un recordatorio con el link para reprogramar o cancelar (una sola vez por cita).

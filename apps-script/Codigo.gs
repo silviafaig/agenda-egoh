@@ -96,6 +96,17 @@ function mailConfirmacion_(c, cfg, appUrl) {
       "<p>Si necesitás reprogramar o cancelar:</p><p>" + boton_("Ver mi cita", linkCita_(appUrl, c)) + "</p>")
   };
 }
+function mailRecordatorioClienta_(c, cfg, appUrl) {
+  const nombre = String(c.data.nombre || "").split(" ")[0];
+  const como = c.tipo === "video"
+    ? "<p>A la hora de la cita te llamamos por <b>videollamada de WhatsApp</b>. Tené el celular a mano.</p>"
+    : "<p>Te esperamos en <b>" + esc_(cfg.direccion) + "</b>.</p>";
+  return {
+    asunto: "Recordatorio: tu cita en " + cfg.nombre + " es el " + fechaLarga_(c.fecha) + " a las " + c.hora + " hs",
+    html: plantilla_("¡Hola, " + nombre + "!", "<p>Te recordamos tu cita.</p>" + bloqueCita_(c, cfg) + como +
+      "<p>Si no podés venir, avisanos desde acá:</p><p>" + boton_("Reprogramar o cancelar", linkCita_(appUrl, c)) + "</p>")
+  };
+}
 function mailAvisoReserva_(c, cfg, appUrl) {
   const d = c.data;
   return {
@@ -196,6 +207,15 @@ function resumenDiario() {
   if (!fecha) return;
   const citas = sb_(conf, "citas?showroom_id=eq." + s.id + "&fecha=eq." + fecha + "&estado=eq.confirmada&select=id,fecha,hora,estado,tipo,token,data&order=hora");
   if (citas.length) enviar_(conf.avisos, mailResumen_(citas, s.config, conf.app, fecha));
+  // Recordatorio automático por mail a cada clienta que dejó su email (una sola vez por cita).
+  citas.forEach((c) => {
+    if (!c.data.email || c.data.mailRecordatorio) return;
+    try {
+      enviar_(c.data.email, mailRecordatorioClienta_(c, s.config, conf.app), conf.avisos);
+      c.data.mailRecordatorio = new Date().toISOString();
+      sb_(conf, "citas?showroom_id=eq." + s.id + "&id=eq." + c.id, { method: "patch", body: { data: c.data } });
+    } catch (err) { console.error("recordatorio " + c.id, err); }
+  });
 }
 
 /* ---------------- instalación ---------------- */
@@ -204,5 +224,5 @@ function instalarTareaDiaria() {
   ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === "resumenDiario").forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger("resumenDiario").timeBased().everyDays(1).atHour(10).inTimezone(TZ).create();
 }
-// Para probar: te manda a vos el resumen de mañana ahora mismo (si hay citas).
+// Para probar: te manda a vos el resumen del próximo día de atención y los recordatorios a las clientas (si hay citas).
 function probarResumen() { resumenDiario(); }
