@@ -405,16 +405,56 @@
   };
   A["ag.estado"] = (el) => { S.db.appts.find((x) => x.id === el.dataset.a).estado = el.dataset.v; S.save(); };
   A["ag.copiarSeg"] = (el) => { const a = S.db.appts.find((x) => x.id === el.dataset.a); U.copyToast(EG.msgSeguimiento(a, S.db.settings, S.prod), "Mensaje copiado."); return false; };
+  /* exportar: ventana con período, estados, bloqueos y columnas (como Turnito) */
+  const COLS = [
+    ["id", "ID", (a) => a.id], ["fecha", "Fecha", (a) => a.fecha], ["hora", "Hora", (a) => a.hora], ["tipo", "Tipo", (a) => U.tipoTxt(a, true)],
+    ["estado", "Estado", (a) => (Object.fromEntries(U.ESTADOS))[a.estado]], ["nombre", "Nombre", (a) => a.nombre], ["whatsapp", "WhatsApp", (a) => a.whatsapp],
+    ["email", "Email", (a) => a.email], ["zona", "Zona", (a) => a.zona], ["comoCompra", "Cómo compra", (a) => a.comoCompra],
+    ["prendas", "Prendas", (a) => (a.prendas || []).map((i) => EG.itemName(i, S.prod) + " T" + i.talle).join(" | ")],
+    ["seLlevo", "Se llevó", (a) => (a.prendas || []).filter((i) => i.seLlevo === true).map((i) => EG.itemName(i, S.prod) + " T" + i.talle).join(" | ")],
+    ["queBusca", "Busca", (a) => a.queBusca], ["notas", "Notas", (a) => a.notas], ["origen", "Origen", (a) => (a.origen === "manual" ? "Carga manual" : "Clienta")]
+  ];
+  const PERIODOS = [["hoy", "Hoy"], ["semana", "Esta semana"], ["mes", "Este mes"], ["30", "Últimos 30 días"], ["custom", "Personalizado"]];
+  function rangoExp(m) {
+    const hoy = hoyYmd(), d = EG.parseYmd(hoy);
+    if (m.per === "hoy") return [hoy, hoy];
+    if (m.per === "semana") { const lun = addDays(hoy, -((d.getDay() + 6) % 7)); return [lun, addDays(lun, 6)]; }
+    if (m.per === "mes") { const f = new Date(d.getFullYear(), d.getMonth() + 1, 0); return [hoy.slice(0, 8) + "01", EG.ymd(f)]; }
+    if (m.per === "30") return [addDays(hoy, -29), hoy];
+    return [m.desde || hoy, m.hasta || m.desde || hoy];
+  }
+  const citasExp = (m) => { const [de, ha] = rangoExp(m); return S.db.appts.filter((a) => a.fecha >= de && a.fecha <= ha && m.est[a.estado]).sort((x, y) => (x.fecha + x.hora).localeCompare(y.fecha + y.hora)); };
+  const bloqExp = (m) => { const [de, ha] = rangoExp(m); return m.bloq ? S.db.bloqueos.filter((b) => b.fecha >= de && b.fecha <= ha) : []; };
+  P.MODALES.exportar = (m) => {
+    const n = citasExp(m).length + bloqExp(m).length, nc = COLS.filter((c) => m.cols[c[0]]).length;
+    const chip = (act, k, on, txt) => `<button type="button" class="pill" data-act="${act}" data-v="${k}" aria-pressed="${on}">${txt}</button>`;
+    return `<div class="modal" role="dialog" aria-modal="true" aria-label="Exportar citas">${mhead("Exportar citas")}
+      <div class="stack sm"><span class="label">Período</span><div class="pills">${PERIODOS.map(([k, t]) => chip("exp.per", k, m.per === k, t)).join("")}</div>
+        ${m.per === "custom" ? `<div class="fgrid two">${mf("e-desde", "Desde", "desde", "date", 'data-change="exp.ref"')}${mf("e-hasta", "Hasta", "hasta", "date", 'data-change="exp.ref"')}</div>` : ""}</div>
+      <div class="stack sm"><span class="label">Estado</span><div class="pills">${U.ESTADOS.map(([k, t]) => chip("exp.est", k, !!m.est[k], t)).join("")}</div></div>
+      <label class="check"><input type="checkbox" ${m.bloq ? "checked" : ""} data-change="exp.bloq">Incluir horarios bloqueados</label>
+      <div class="stack sm"><div class="row between"><span class="label">Columnas</span><button type="button" class="linkbtn" data-act="exp.todas">${nc === COLS.length ? "Deseleccionar todas" : "Seleccionar todas"}</button></div>
+        <div class="pills">${COLS.map(([k, t]) => chip("exp.col", k, !!m.cols[k], t)).join("")}</div></div>
+      <div class="row between"><span class="small"><b>A exportar:</b> ${U.plural(n, "fila")}</span>
+        <button type="button" class="btn dark" data-act="exp.bajar" ${n && nc ? "" : "disabled"}>${I("download", 15)}Exportar</button></div></div>`;
+  };
   A["ag.export"] = () => {
-    const [desde, hasta] = rango();
-    const est = Object.fromEntries(U.ESTADOS);
-    const rows = [["Fecha", "Hora", "Tipo", "Estado", "Nombre", "WhatsApp", "Email", "Zona", "Cómo compra", "Prendas", "Se llevó", "Notas", "Origen"]];
-    S.db.appts.filter((a) => a.fecha >= desde && a.fecha <= hasta).sort((x, y) => (x.fecha + x.hora).localeCompare(y.fecha + y.hora)).forEach((a) => {
-      rows.push([a.fecha, a.hora, U.tipoTxt(a, true), est[a.estado], a.nombre, a.whatsapp, a.email, a.zona, a.comoCompra,
-        a.prendas.map((i) => EG.itemName(i, S.prod) + " T" + i.talle).join(" | "), a.prendas.filter((i) => i.seLlevo === true).map((i) => EG.itemName(i, S.prod) + " T" + i.talle).join(" | "), a.notas, a.origen === "manual" ? "Carga manual" : "Clienta"]);
-    });
-    U.download("agenda-" + desde + "-a-" + hasta + ".csv", EG.toCSV(rows));
-    return false;
+    S.ui.modal = { kind: "exportar", per: "mes", desde: "", hasta: "", bloq: false,
+      est: { confirmada: true, asistio: true, no_vino: true, cancelada: false }, cols: Object.fromEntries(COLS.map((c) => [c[0], c[0] !== "id"])) };
+  };
+  A["exp.per"] = (el) => { S.ui.modal.per = el.dataset.v; };
+  A["exp.est"] = (el) => { const e = S.ui.modal.est; e[el.dataset.v] = !e[el.dataset.v]; };
+  A["exp.col"] = (el) => { const c = S.ui.modal.cols; c[el.dataset.v] = !c[el.dataset.v]; };
+  A["exp.todas"] = () => { const c = S.ui.modal.cols, todas = COLS.every((x) => c[x[0]]); COLS.forEach((x) => { c[x[0]] = !todas; }); };
+  EG.changes["exp.bloq"] = (el) => { S.ui.modal.bloq = el.checked; };
+  EG.changes["exp.ref"] = () => true;
+  A["exp.bajar"] = () => {
+    const m = S.ui.modal, [de, ha] = rangoExp(m), cols = COLS.filter((c) => m.cols[c[0]]);
+    const rows = [cols.map((c) => c[1])];
+    citasExp(m).forEach((a) => rows.push(cols.map((c) => c[2](a) || "")));
+    bloqExp(m).forEach((b) => rows.push(cols.map((c) => ({ fecha: b.fecha, hora: b.desde ? b.desde + "–" + b.hasta : "Día completo", estado: "Bloqueado", notas: b.motivo || "" })[c[0]] || "")));
+    U.download("citas-" + de + "-a-" + ha + ".csv", EG.toCSV(rows));
+    S.ui.modal = null;
   };
 
   /* ventanas */
