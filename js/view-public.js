@@ -98,8 +98,14 @@
     return `<div class="stack lg">${grupo("Mañana", "sun", slots.filter((x) => EG.toMin(x.h) < 13 * 60))}${grupo("Tarde", "sunset", slots.filter((x) => EG.toMin(x.h) >= 13 * 60))}</div>`;
   }
 
+  // Días de atención que puede elegir la clienta: hasta el límite "Reservar hasta (días adelante)"; sin límite, 60 días.
+  function diasCliente(s) {
+    const lim = new Date(); lim.setDate(lim.getDate() + (EG.reglas(s).maxDias || 60));
+    const tope = EG.ymd(lim);
+    return EG.nextDays(s, 120).filter((d) => d <= tope);
+  }
   function daysHtml(s, sel, act, ignorarId) {
-    const dias = EG.nextDays(s, 10);
+    const dias = diasCliente(s);
     const libre = (d) => EG.slotsCliente(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
     return `<div class="days" data-keepscroll="dias" role="group" aria-label="Día">${dias.map((d) => {
       const x = EG.parseYmd(d);
@@ -108,7 +114,7 @@
   }
   // Elige el primer día con lugar si el elegido ya no sirve.
   function fixFecha(s, obj, ignorarId) {
-    const dias = EG.nextDays(s, 10);
+    const dias = diasCliente(s);
     const libre = (d) => EG.slotsCliente(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
     if (!obj.fecha || dias.indexOf(obj.fecha) < 0 || !libre(obj.fecha)) { obj.fecha = dias.find(libre) || dias[0] || null; obj.hora = null; }
     return dias;
