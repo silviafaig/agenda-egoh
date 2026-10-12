@@ -336,9 +336,10 @@
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Listo</button></div></div>`;
   }
 
+  P.MODALES = P.MODALES || {}; // ventanas que agregan otras pantallas (ej.: cambio de precios en Catálogo)
   function modal() {
     const m = S.ui.modal;
-    const body = m.kind === "reserva" ? modalReserva(m) : m.kind === "bloqueo" ? modalBloqueo(m) : m.kind === "qr" ? modalQr() : m.kind === "clienta" ? modalClienta(m) : m.kind === "recordatorios" ? modalRecordatorios() : "";
+    const body = m.kind === "reserva" ? modalReserva(m) : m.kind === "bloqueo" ? modalBloqueo(m) : m.kind === "qr" ? modalQr() : m.kind === "clienta" ? modalClienta(m) : m.kind === "recordatorios" ? modalRecordatorios() : P.MODALES[m.kind] ? P.MODALES[m.kind](m) : "";
     return `<div class="overlay">${body}</div>`;
   }
 

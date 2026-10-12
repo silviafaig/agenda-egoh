@@ -44,6 +44,7 @@
     const lista = S.db.products.filter((p) => p.categoria === S.ui.catPanel);
     return `${P.title("Catálogo", "Las clientas eligen de acá su preselección al reservar.", `<label class="btn sm" style="cursor:pointer">${I("image-plus", 15)}${S.ui.busy ? "Cargando fotos…" : "Cargar fotos en masa"}
           <input class="sr-only" type="file" accept="image/*" multiple data-change="cat.masivo" ${S.ui.busy ? "disabled" : ""}></label>
+        <button type="button" class="btn sm" data-act="precios.abrir">${I("pencil", 15)}Cambiar precios</button>
         <button type="button" class="btn sm dark" data-act="cat.nueva">${I("plus", 15)}Agregar prenda</button>`)}
       <div class="stack lg">
         <p class="notice soft">Carga masiva: elegí varias fotos juntas y cada una se asigna a su prenda por el nombre del archivo, con el formato <b>Bikini_Modelo_Color_01.jpg</b> (por ejemplo <i>Bikini_Cala_Black_01.jpg</i>). Se usa la <b>_01</b>, salvo en Reversible Vela Malbec / Black, que usa la <b>_02</b>.</p>
@@ -57,6 +58,64 @@
   };
 
   A["cat.filtro"] = (el) => { S.ui.catPanel = el.dataset.v; };
+
+  /* ---------- Cambio de precios masivo ---------- */
+  const MODOS = [["fijo", "Precio fijo"], ["subir", "Subir %"], ["bajar", "Bajar %"], ["monto", "Sumar o restar $"]];
+  // Prendas que coinciden con la búsqueda (nombre o modelo) y la categoría.
+  EG.preciosCoinciden = (prods, q, cat) => {
+    const n = EG.normName(q || "");
+    return prods.filter((p) => (!cat || p.categoria === cat) && (!n || EG.normName(p.nombre + " " + (p.modelo || "")).indexOf(n) >= 0));
+  };
+  // Precio nuevo (en pesos, sin centavos). null = no cambia (por ejemplo, % sobre una prenda sin precio).
+  EG.precioNuevo = (precio, modo, valor) => {
+    const v = Number(valor), act = Number(precio) || 0;
+    if (valor === "" || valor == null || isNaN(v)) return null;
+    let r;
+    if (modo === "fijo") r = v;
+    else if (modo === "subir") { if (!act) return null; r = act * (1 + v / 100); }
+    else if (modo === "bajar") { if (!act) return null; r = act * (1 - v / 100); }
+    else if (modo === "monto") { if (!act) return null; r = act + v; }
+    else return null;
+    return Math.max(0, Math.round(r));
+  };
+  P.MODALES.precios = (m) => {
+    const lista = EG.preciosCoinciden(S.db.products, m.q, m.cat);
+    const elegidas = lista.filter((p) => !m.fuera[p.id]);
+    const cambios = elegidas.map((p) => ({ p, nuevo: EG.precioNuevo(p.precio, m.modo, m.valor) })).filter((x) => x.nuevo !== null && x.nuevo !== (Number(x.p.precio) || 0));
+    const ph = { fijo: "Ej: 25000", subir: "Ej: 10", bajar: "Ej: 15", monto: "Ej: 2000 o -2000" }[m.modo];
+    return `<div class="modal" id="mod-precios" role="dialog" aria-modal="true" aria-label="Cambiar precios"><div class="grab"></div>
+      <div class="mhead"><h2>Cambiar precios</h2><button type="button" class="iconbtn sm" data-act="mod.close" aria-label="Cerrar">${I("x", 15)}</button></div>
+      <div class="fgrid two">
+        <label class="f" for="pr-q">Nombre o modelo<input class="t" id="pr-q" type="search" placeholder="Ej: Cala (vacío = todas)" value="${esc(m.q)}" data-bind="modal.q" data-change="precios.ref"></label>
+        <label class="f" for="pr-cat">Categoría<select class="t" id="pr-cat" data-bind="modal.cat" data-change="precios.ref"><option value="">Todas</option>${EG.CATEGORIAS.map((c) => `<option${m.cat === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label></div>
+      <div class="stack sm"><span class="label">Cambio</span><div class="seg" style="flex-wrap:wrap">${MODOS.map(([k, t]) => `<button type="button" data-act="mod.set" data-k="modo" data-v="${k}" aria-pressed="${m.modo === k}">${t}</button>`).join("")}</div>
+        <label class="f" for="pr-v" style="max-width:220px"><span>${m.modo === "fijo" ? "Precio nuevo ($)" : m.modo === "monto" ? "Monto ($)" : "Porcentaje (%)"}</span><input class="t num" id="pr-v" type="number" inputmode="decimal" placeholder="${ph}" value="${esc(m.valor)}" data-bind="modal.valor" data-change="precios.ref"></label>
+        ${m.modo !== "fijo" ? `<p class="xs muted">Las prendas sin precio no cambian.</p>` : ""}</div>
+      <div class="stack sm"><span class="label">${U.plural(lista.length, "prenda")} · ${elegidas.length} elegidas · ${U.plural(cambios.length, "cambio")}</span>
+        ${lista.length ? `<div class="pickbox" data-keepscroll="pickprecios">${lista.map((p) => {
+          const nuevo = EG.precioNuevo(p.precio, m.modo, m.valor), on = !m.fuera[p.id];
+          return `<label class="rowitem" style="cursor:pointer"><input type="checkbox" ${on ? "checked" : ""} data-change="precios.toggle" data-v="${esc(p.id)}" aria-label="${esc(p.nombre)}">
+            <span class="grow small">${esc(p.nombre)}</span><span class="small num muted">${p.precio > 0 ? money(p.precio) : "Sin precio"}</span>
+            ${on && nuevo !== null ? `<span class="small num b">→ ${money(nuevo)}</span>` : ""}</label>`; }).join("")}</div>`
+          : `<p class="small muted">No hay prendas con ese nombre.</p>`}</div>
+      <p class="xs muted">Escribí y tocá Enter (o salí del campo) para ver la vista previa.</p>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Cancelar</button>
+        <button type="button" class="btn dark" data-act="precios.aplicar" ${cambios.length ? "" : "disabled"}>Aplicar a ${U.plural(cambios.length, "prenda")}</button></div></div>`;
+  };
+  A["precios.abrir"] = () => { S.ui.modal = { kind: "precios", q: "", cat: S.ui.catPanel, modo: "subir", valor: "", fuera: {} }; };
+  EG.changes["precios.ref"] = () => true;
+  EG.changes["precios.toggle"] = (el) => { const f = S.ui.modal.fuera; if (el.checked) delete f[el.dataset.v]; else f[el.dataset.v] = true; return true; };
+  A["precios.aplicar"] = () => {
+    const m = S.ui.modal;
+    let n = 0;
+    EG.preciosCoinciden(S.db.products, m.q, m.cat).forEach((p) => {
+      if (m.fuera[p.id]) return;
+      const nuevo = EG.precioNuevo(p.precio, m.modo, m.valor);
+      if (nuevo !== null && nuevo !== (Number(p.precio) || 0)) { p.precio = nuevo; n++; }
+    });
+    S.ui.modal = null;
+    if (n) { S.save(); S.toast("Precios actualizados en " + U.plural(n, "prenda") + "."); }
+  };
   A["cat.nueva"] = () => {
     S.ui.formErr = "";
     S.ui.editProd = { id: null, nombre: "", categoria: S.ui.catPanel, precio: "", modelo: "", color: "", tallesTxt: S.ui.catPanel === "Bikinis SS27" ? EG.TALLES_BIKINI.join(", ") : "", fotoNueva: "" };

@@ -425,3 +425,4 @@ body.is-public .toast { bottom: 24px; }
   .bnav button { font-size: 11px; }
 }
 .contacto { gap: 8px; margin-top: -4px; }
+input[type="checkbox"] { accent-color: var(--accent); }
