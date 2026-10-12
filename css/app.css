@@ -393,8 +393,8 @@ body.is-public .toast { bottom: 24px; }
   /* panel */
   .ptop, .bnav, .only-m { visibility: hidden; }
   .ptop, .bnav { display: none; }
-  .side { display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; width: var(--side); border-right: 1px solid var(--line); padding: 22px 14px; overflow-y: auto; background: var(--card); z-index: 30; }
-  .side .menu button:hover { background: #ebe7e2; }
+  .side { display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; width: var(--side); border-right: 1px solid var(--line); padding: 22px 14px; overflow-y: auto; background: #fff; z-index: 30; }
+  .side .menu button:hover { background: var(--card); }
   .side .menu button[aria-current="page"]:hover { background: var(--accent); }
   .only-mob { display: none !important; }
   .side .logo { margin: 0 12px 18px; }
