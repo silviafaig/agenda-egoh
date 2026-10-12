@@ -7,7 +7,7 @@
 
   // Logo: la imagen cargada en Perfil público o, si no hay, el nombre en serif ("egoh.").
   U.logo = (s, cls, act) => {
-    const src = s.logo ? EG.store.fotoGet("logo") : "";
+    const src = EG.imgSrc(s.logo, "logo");
     const inner = src ? `<img src="${esc(src)}" alt="${esc(s.nombre)}">` : esc(String(s.nombre || "").toLowerCase()) + ".";
     return act
       ? `<button type="button" class="logo ${cls || ""}" data-act="${act}" data-v="inicio" aria-label="${esc(s.nombre)}">${inner}</button>`

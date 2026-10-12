@@ -7,8 +7,22 @@
   const U = EG.ui;
   const { esc, money, fechaLarga, DIAS, MESES, icon: I } = EG;
 
+  const R = EG.remote;
   const PASOS = ["Tipo de cita", "Día y horario", "Preselección", "Tus datos", "Resumen"];
-  const newBooking = () => ({ tipo: null, fecha: null, hora: null, prendas: [], nombre: "", whatsapp: "", email: "", zona: "", comoCompra: "", queBusca: "" });
+  // "Recordar mis datos": se guardan solo en este celular/computadora, nunca en otro lado.
+  const MIS_DATOS = "eg-mis-datos";
+  const leerDatos = () => { try { return JSON.parse(localStorage.getItem(MIS_DATOS) || "null"); } catch (e) { return null; } };
+  const guardarDatos = (b) => {
+    try {
+      if (b.recordar) localStorage.setItem(MIS_DATOS, JSON.stringify({ nombre: b.nombre.trim(), whatsapp: b.whatsapp.trim(), email: b.email.trim(), zona: b.zona.trim(), comoCompra: b.comoCompra }));
+      else localStorage.removeItem(MIS_DATOS);
+    } catch (e) { /* sin almacenamiento: no pasa nada */ }
+  };
+  const newBooking = () => {
+    const d = leerDatos() || {};
+    return { tipo: null, fecha: null, hora: null, prendas: [], nombre: d.nombre || "", whatsapp: d.whatsapp || "", email: d.email || "",
+      zona: d.zona || "", comoCompra: d.comoCompra || "", queBusca: "", recordar: true };
+  };
   S.ui.booking = newBooking();
 
   function resetBooking() {
@@ -41,11 +55,22 @@
       <h1>${titulo}</h1>${sub ? `<p class="muted">${sub}</p>` : ""}</div>`;
   }
 
+  const contacto = (s) => (s.whatsappShowroom || s.instagram
+    ? `<div class="row contacto">${s.instagram ? `<a class="btn xs" href="https://instagram.com/${encodeURIComponent(s.instagram)}" target="_blank" rel="noopener">${I("instagram", 14)}Instagram</a>` : ""}${s.whatsappShowroom ? `<a class="btn xs" href="${esc(EG.waLink(s.whatsappShowroom, "Hola, tengo una consulta"))}" target="_blank" rel="noopener">${I("message-circle", 14)}WhatsApp</a>` : ""}</div>`
+    : "");
+  const MOTIVOS = {
+    ocupado: "Ese horario se acaba de ocupar. Elegí otro.", bloqueado: "Ese horario se acaba de ocupar. Elegí otro.",
+    muy_pronto: "Ese horario está muy cerca: hay que reservar con más anticipación. Elegí otro.",
+    muy_lejos: "Todavía no se puede reservar para esa fecha. Elegí una más cercana.",
+    pausado: "En este momento no estamos tomando reservas.",
+    fuera_de_plazo: "Ya pasó el plazo para hacer cambios online. Escribinos por WhatsApp.",
+    limite_reprogramaciones: "Ya reprogramaste esta cita. Para otro cambio, escribinos por WhatsApp."
+  };
   const P1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
   /* ---------- pasos ---------- */
   function stepTipo(s, b) {
-    const portada = s.portada ? EG.store.fotoGet("portada") : "";
+    const portada = EG.imgSrc(s.portada, "portada");
     const opt = (v, ico, titulo, desc) =>
       `<button type="button" class="opt" data-act="pub.type" data-v="${v}" aria-pressed="${b.tipo === v}"><span class="oico">${I(ico, 20)}</span>
         <span><h3>${titulo}</h3><p>${desc}</p></span></button>`;
@@ -55,15 +80,16 @@
         ${b.tipo === "presencial" ? `<p>${I("map-pin", 16)}<span>${esc(s.direccion)}</span></p>` : ""}
         <p>${I("clock", 16)}<span>Solo con cita previa · ${esc(s.duracion)} min</span></p>
         ${s.compraMinima > 0 ? `<p>${I("shopping-bag", 16)}<span>${minimoTxt(s)}</span></p>` : ""}</div>
+      ${contacto(s)}
       <div class="options">
         ${opt("presencial", "map-pin", "Visita al showroom", esc(s.duracion) + " min · Ves y probás las prendas en persona" + (barrio(s) ? " · " + esc(barrio(s)) : "") + ".")}
-        ${opt("video", "video", "Videollamada", esc(s.duracion) + " min · Te mostramos las prendas en vivo, desde donde estés.")}
+        ${opt("video", "video", "Videollamada", esc(s.duracion) + " min · Te mostramos las prendas en vivo por videollamada de WhatsApp.")}
       </div>
       <button type="button" class="btn dark block" data-act="pub.next" ${b.tipo ? "" : "disabled"}>Elegir día y horario</button>`;
   }
 
   function slotsHtml(s, fecha, sel, act, ignorarId) {
-    const slots = EG.slotsFor(s, S.db.appts, fecha, null, S.db.bloqueos, ignorarId);
+    const slots = EG.slotsCliente(s, S.db.appts, fecha, null, S.db.bloqueos, ignorarId);
     if (!slots.some((x) => !x.off)) return `<p class="empty">No quedan horarios este día. Probá con otro.</p>`;
     const grupo = (titulo, ico, lista) => (lista.length
       ? `<div class="slotgroup"><h4 class="row">${I(ico, 15)}${titulo}</h4><div class="slots" role="group" aria-label="${titulo}">${lista.map((x) =>
@@ -72,9 +98,15 @@
     return `<div class="stack lg">${grupo("Mañana", "sun", slots.filter((x) => EG.toMin(x.h) < 13 * 60))}${grupo("Tarde", "sunset", slots.filter((x) => EG.toMin(x.h) >= 13 * 60))}</div>`;
   }
 
+  // Días de atención que puede elegir la clienta: hasta el límite "Reservar hasta (días adelante)"; sin límite, 60 días.
+  function diasCliente(s) {
+    const lim = new Date(); lim.setDate(lim.getDate() + (EG.reglas(s).maxDias || 60));
+    const tope = EG.ymd(lim);
+    return EG.nextDays(s, 120).filter((d) => d <= tope);
+  }
   function daysHtml(s, sel, act, ignorarId) {
-    const dias = EG.nextDays(s, 10);
-    const libre = (d) => EG.slotsFor(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
+    const dias = diasCliente(s);
+    const libre = (d) => EG.slotsCliente(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
     return `<div class="days" data-keepscroll="dias" role="group" aria-label="Día">${dias.map((d) => {
       const x = EG.parseYmd(d);
       return `<button type="button" class="day" data-act="${act}" data-v="${d}" aria-pressed="${sel === d}" ${libre(d) ? "" : "disabled"} aria-label="${esc(fechaLarga(d))}"><span>${DIAS[x.getDay()]}</span><b>${x.getDate()}</b><span>${MESES[x.getMonth()]}</span></button>`;
@@ -82,8 +114,8 @@
   }
   // Elige el primer día con lugar si el elegido ya no sirve.
   function fixFecha(s, obj, ignorarId) {
-    const dias = EG.nextDays(s, 10);
-    const libre = (d) => EG.slotsFor(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
+    const dias = diasCliente(s);
+    const libre = (d) => EG.slotsCliente(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
     if (!obj.fecha || dias.indexOf(obj.fecha) < 0 || !libre(obj.fecha)) { obj.fecha = dias.find(libre) || dias[0] || null; obj.hora = null; }
     return dias;
   }
@@ -159,6 +191,7 @@
           `<button type="button" class="pill" data-act="pub.como" data-v="${esc(k)}" aria-pressed="${b.comoCompra === k}">${esc(k)}</button>`).join("")}</div></div>
         <label class="f full" for="queBusca"><span>¿Qué estás buscando? <span class="hint">(opcional)</span></span><textarea class="t" id="queBusca" name="queBusca" data-bind="booking.queBusca" placeholder="Talles, colores, para qué temporada…">${esc(b.queBusca)}</textarea></label>
       </div>
+      <label class="check"><input type="checkbox" data-bind="booking.recordar" ${b.recordar ? "checked" : ""}>Recordar mis datos en este dispositivo</label>
       ${S.ui.formErr ? `<p class="err" role="alert">${esc(S.ui.formErr)}</p>` : ""}
       <button class="btn dark block" type="submit">Ver resumen</button></form>`;
   }
@@ -168,7 +201,7 @@
     const minimo = s.compraMinima > 0 ? li("shopping-bag", minimoTxt(s)) : "";
     if (tipo === "video") {
       return `<div class="sumblock"><h3>Antes de la videollamada</h3>
-        ${li("video", "Al confirmar te damos el link de la videollamada. Entrás desde el celular o la compu, sin instalar nada.")}
+        ${li("video", "Te llamamos por videollamada de WhatsApp al número que dejaste, a la hora de la cita.")}
         ${li("clock", "Dura " + esc(s.duracion) + " min. Conectate a horario.")}${minimo}</div>`;
     }
     return `<div class="sumblock"><h3>Antes de venir</h3>
@@ -189,7 +222,7 @@
         ${blk("Tus datos", 3, `<dl class="kv"><dt>Nombre</dt><dd>${esc(b.nombre)}</dd><dt>WhatsApp</dt><dd class="num">${esc(b.whatsapp)}</dd><dt>Email</dt><dd>${esc(b.email)}</dd>${b.zona ? `<dt>Zona</dt><dd>${esc(b.zona)}</dd>` : ""}<dt>Comprás</dt><dd>${esc(b.comoCompra)}</dd>${b.queBusca ? `<dt>Buscás</dt><dd>${esc(b.queBusca)}</dd>` : ""}</dl>`)}
       </div><div class="stack">${antesDeVenir(s, b.tipo)}
         ${S.ui.formErr ? `<p class="err" role="alert">${esc(S.ui.formErr)}</p>` : ""}
-        <button type="button" class="btn dark block" data-act="pub.confirmar">Confirmar cita</button></div></div>`;
+        <button type="button" class="btn dark block" data-act="pub.confirmar" ${S.ui.busy ? "disabled" : ""}>${S.ui.busy ? "Confirmando…" : "Confirmar cita"}</button></div></div>`;
   }
 
   function confirmacion(a) {
@@ -199,13 +232,11 @@
         <h1>¡Listo, ${esc(a.nombre.split(" ")[0])}!</h1>
         <p class="muted">Tu cita quedó confirmada para el <b style="color:var(--ink)">${esc(fechaLarga(a.fecha))} a las ${esc(a.hora)} hs</b>.</p></div>
       <div class="sumblock">${a.tipo === "video"
-        ? `<h3 class="row">${I("video", 16)}Videollamada</h3><p class="small">Entrá a la hora de la cita desde este link (no necesitás instalar nada):</p>
-           <a class="small b" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener" style="overflow-wrap:anywhere">${esc(EG.videoLink(a))}</a>
-           <div class="row"><a class="btn dark sm" href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${I("video", 15)}Abrir link</a><button type="button" class="btn sm" data-act="pub.copyVideo">${I("copy", 15)}Copiar link</button></div>`
+        ? `<h3 class="row">${I("video", 16)}Videollamada por WhatsApp</h3><p class="small">A la hora de la cita te llamamos por videollamada de WhatsApp al <b class="num">${esc(a.whatsapp)}</b>. Tené el celular a mano.</p>`
         : `<h3 class="row">${I("map-pin", 16)}Te esperamos en</h3><p class="small">${esc(s.direccion)}</p>
            <a class="btn dark sm" style="align-self:flex-start" href="${esc(U.mapsLink(s.direccion))}" target="_blank" rel="noopener">${I("navigation", 15)}Cómo llegar</a>`}</div>
       ${a.prendas.length ? `<div class="sumblock"><h3>Vamos a tener listas</h3><ul class="list small">${a.prendas.map((i) => `<li>${esc(EG.itemName(i, S.prod))} · talle ${esc(i.talle)}</li>`).join("")}</ul></div>` : ""}
-      <p class="small muted center">Antes de la cita te escribimos por WhatsApp. Ahí vas a tener un link por si necesitás reprogramar o cancelar.</p>
+      <p class="small muted center">${R.mails && a.email ? "Te mandamos la confirmación a tu mail, con un link por si necesitás reprogramar o cancelar. " : ""}Antes de la cita te escribimos por WhatsApp${R.mails && a.email ? "." : ", con un link por si necesitás reprogramar o cancelar."}</p>
       <div class="row" style="justify-content:center">${S.ui.fromPanel ? `<button type="button" class="btn dark" data-act="pub.seePanel">Ver la cita en el panel</button>` : ""}
         <button type="button" class="btn" data-act="pub.restart">Hacer otra reserva</button></div></div>`;
   }
@@ -213,23 +244,39 @@
   /* ---------- página de la cita: reprogramar o cancelar ---------- */
   function citaPage() {
     const s = S.db.settings;
-    const a = S.db.appts.find((x) => x.id === S.ui.citaId);
     const wrap = (h) => top() + `<main class="pubwrap narrow">${h}</main>`;
+    let a;
+    if (R.on) {
+      if (S.ui.citaRemota === undefined) {
+        S.ui.citaRemota = null;
+        R.verCita(S.ui.citaId, S.ui.citaToken || "")
+          .then((d) => { S.ui.citaRemota = d || false; S.render(); })
+          .catch(() => { S.ui.citaRemota = false; S.render(); });
+      }
+      if (S.ui.citaRemota === null) return wrap(`<p class="muted">Cargando tu cita…</p>`);
+      a = S.ui.citaRemota || null;
+    } else a = S.db.appts.find((x) => x.id === S.ui.citaId);
     if (!a) {
       return wrap(`<h1>No encontramos tu cita</h1><p class="muted">Revisá el link o escribinos por WhatsApp.</p>
-        <p class="notice soft">Por ahora las citas se guardan en el navegador del showroom: este link funciona solo en el mismo equipo. Cuando conectemos la base de datos (etapa 2), va a andar desde cualquier celular.</p>
+        ${R.on ? "" : `<p class="notice soft">En esta versión de prueba las citas se guardan en el navegador del showroom: el link funciona solo en el mismo equipo.</p>`}
         <button type="button" class="btn dark" data-act="pub.nueva">Reservar una cita</button>`);
     }
     const c = S.ui.cita || (S.ui.cita = { modo: null, fecha: a.fecha, hora: null });
     const datos = `<div class="sumblock"><div class="cardhead"><h3>Tu cita</h3>${U.estadoChip(a)}</div>
       <dl class="kv"><dt>Tipo</dt><dd>${U.tipoTxt(a)}</dd><dt>Día</dt><dd>${esc(fechaLarga(a.fecha))}</dd><dt>Hora</dt><dd>${esc(a.hora)} hs</dd>
-      ${a.tipo === "video" ? `<dt>Link</dt><dd><a href="${esc(EG.videoLink(a))}" target="_blank" rel="noopener">${esc(EG.videoLink(a))}</a></dd>` : `<dt>Dónde</dt><dd>${esc(s.direccion)}</dd>`}</dl></div>`;
+      ${a.tipo === "video" ? `<dt>Cómo</dt><dd>Te llamamos por videollamada de WhatsApp</dd>` : `<dt>Dónde</dt><dd>${esc(s.direccion)}</dd>`}</dl></div>`;
     if (a.estado === "cancelada") {
       return wrap(`<h1>Tu cita está cancelada</h1>${datos}<button type="button" class="btn dark" data-act="pub.nueva">Reservar otra cita</button>`);
     }
     if (a.estado !== "confirmada") return wrap(`<h1>Hola, ${esc(a.nombre.split(" ")[0])}</h1>${datos}`);
-    let cuerpo = `<div class="row"><button type="button" class="btn dark" data-act="cita.modo" data-v="reprogramar">${I("calendar-days", 16)}Reprogramar</button>
-      <button type="button" class="btn danger" data-act="cita.modo" data-v="cancelar">Cancelar cita</button></div>`;
+    const r = EG.reglas(s);
+    const puede = EG.puedeCambiar(s, a), reprog = EG.puedeReprogramar(s, a);
+    const plazoTxt = r.cambiosHoras > 0 ? `Los cambios online se pueden hacer hasta ${U.plural(r.cambiosHoras, "hora")} antes de la cita.` : "";
+    let cuerpo = !puede
+      ? `<div class="sumblock"><p class="small">${esc(plazoTxt)} Para cancelar o cambiar el horario, escribinos.</p>${contacto(s)}</div>`
+      : `<div class="row">${reprog ? `<button type="button" class="btn dark" data-act="cita.modo" data-v="reprogramar">${I("calendar-days", 16)}Reprogramar</button>` : ""}
+      <button type="button" class="btn danger" data-act="cita.modo" data-v="cancelar">Cancelar cita</button></div>
+      ${!reprog ? `<p class="small muted">Ya reprogramaste esta cita. Para otro cambio, escribinos por WhatsApp.</p>` : plazoTxt ? `<p class="small muted">${esc(plazoTxt)}</p>` : ""}`;
     if (c.modo === "cancelar") {
       cuerpo = `<div class="sumblock"><h3>¿Cancelamos tu cita?</h3><p class="small muted">El horario queda libre para otra persona.</p>
         <div class="row"><button type="button" class="btn danger" data-act="cita.cancelar">Sí, cancelar</button><button type="button" class="btn" data-act="cita.modo" data-v="">No, volver</button></div></div>`;
@@ -250,6 +297,10 @@
     if (ui.splash) return `<div class="splash">${U.logo(s, "xl")}</div>`;
     if (ui.route === "cita") return citaPage();
     if (ui.done) return top() + confirmacion(ui.done);
+    if (!EG.reglas(s).abierta) {
+      return top() + `<main class="pubwrap narrow"><h1>Por ahora no estamos tomando reservas</h1>
+        <p class="muted">Volvé a entrar en unos días. Si tenés una consulta, escribinos.</p>${contacto(s)}</main>`;
+    }
     const pasos = [stepTipo, stepFecha, stepPrendas, stepDatos, stepResumen];
     return top() + `<main class="pubwrap${st === 0 || st >= 3 ? " narrow" : ""}">${pasos[st](s, b)}</main>`;
   };
@@ -308,7 +359,6 @@
 
   A["pub.restart"] = () => { resetBooking(); return "top"; };
   A["pub.nueva"] = () => { resetBooking(); S.go("reservar"); return false; };
-  A["pub.copyVideo"] = () => { U.copyToast(EG.videoLink(S.ui.done), "Link copiado."); return false; };
   A["pub.backPanel"] = () => { resetBooking(); S.ui.fromPanel = false; S.go("inicio"); return false; };
   A["pub.seePanel"] = () => {
     const a = S.ui.done;
@@ -336,13 +386,37 @@
     const ui = S.ui, b = ui.booking, s = S.db.settings;
     const wa = EG.normalizePhone(b.whatsapp);
     if (!wa || !b.comoCompra) { ui.step = 3; return "top"; }
-    if (!EG.isSlotFree(s, S.db.appts, b.fecha, b.hora, null, S.db.bloqueos)) {
+    if (!EG.isSlotFree(s, S.db.appts, b.fecha, b.hora, null, S.db.bloqueos) || !EG.dentroDePlazo(s, b.fecha, b.hora)) {
       b.hora = null;
       ui.step = 1;
       ui.slotMsg = "Ese horario se acaba de ocupar. Elegí otro.";
       return "top";
     }
     const datos = { nombre: b.nombre.trim(), whatsapp: wa, email: b.email.trim(), zona: b.zona.trim(), comoCompra: b.comoCompra };
+    const prendas = b.prendas.map((i) => ({ id: i.id, nombre: EG.itemName(i, S.prod), talle: i.talle, seLlevo: null }));
+    if (R.on) {
+      if (ui.busy) return false;
+      ui.busy = true;
+      R.reservar(Object.assign({ fecha: b.fecha, hora: b.hora, tipo: b.tipo, queBusca: b.queBusca.trim(), prendas }, datos))
+        .then(async (r) => {
+          ui.busy = false;
+          if (r.error) {
+            await R.refreshOcupados().catch(() => {});
+            b.hora = null; ui.step = 1;
+            ui.slotMsg = MOTIVOS[r.error] || "Ese horario ya no está disponible. Elegí otro.";
+          } else {
+            R.notify("reserva", r.id, r.token);
+            guardarDatos(b);
+            ui.done = Object.assign({ id: r.id, _token: r.token, sala: r.sala, fecha: b.fecha, hora: b.hora, tipo: b.tipo, estado: "confirmada", prendas }, datos);
+            if (R.panel) R.loadPanel().catch(() => {});
+            else R.refreshOcupados().catch(() => {});
+          }
+          S.render({ top: true });
+        })
+        .catch((e) => { console.error("reservar", e); ui.busy = false; ui.formErr = "No pudimos confirmar la cita. Revisá tu conexión y probá de nuevo."; S.render(); });
+      S.render();
+      return false;
+    }
     const c = EG.upsertClienta(S.db, datos);
     const a = Object.assign({
       id: EG.uid(), fecha: b.fecha, hora: b.hora, tipo: b.tipo, estado: "confirmada", queBusca: b.queBusca.trim(),
@@ -352,6 +426,7 @@
     }, datos);
     S.db.appts.push(a);
     S.save();
+    guardarDatos(b);
     ui.done = a;
     return "top";
   };
@@ -361,20 +436,40 @@
   A["cita.date"] = (el) => { S.ui.cita.fecha = el.dataset.v; S.ui.cita.hora = null; };
   A["cita.time"] = (el) => { S.ui.cita.hora = el.dataset.v; };
   A["cita.cancelar"] = () => {
+    if (R.on) {
+      R.cancelarCita(S.ui.citaId, S.ui.citaToken).then((r) => {
+        if (r && r.ok) { R.notify("cambio", S.ui.citaId, S.ui.citaToken); S.ui.citaRemota.estado = "cancelada"; S.ui.cita = null; S.toast("Tu cita quedó cancelada."); }
+        else S.toast(MOTIVOS[r && r.error] || "No se pudo cancelar. Escribinos por WhatsApp.");
+        S.render();
+      });
+      return false;
+    }
     const a = S.db.appts.find((x) => x.id === S.ui.citaId);
+    if (!EG.puedeCambiar(S.db.settings, a)) { S.toast(MOTIVOS.fuera_de_plazo); return; }
     a.estado = "cancelada";
     S.ui.cita = null;
     S.save();
     S.toast("Tu cita quedó cancelada.");
   };
   A["cita.guardar"] = () => {
+    if (R.on) {
+      const a = S.ui.citaRemota, c = S.ui.cita;
+      R.reprogramarCita(a.id, S.ui.citaToken, c.fecha, c.hora).then(async (r) => {
+        if (r && r.ok) { R.notify("cambio", a.id, S.ui.citaToken); a.fecha = c.fecha; a.hora = c.hora; a.reprogramaciones = (Number(a.reprogramaciones) || 0) + 1; S.ui.cita = null; S.toast("Listo: tu cita quedó para el " + fechaLarga(a.fecha) + " a las " + a.hora + " hs."); }
+        else { c.hora = null; await R.refreshOcupados().catch(() => {}); S.toast(MOTIVOS[r && r.error] || "Ese horario ya no está disponible. Elegí otro."); }
+        S.render();
+      });
+      return false;
+    }
     const a = S.db.appts.find((x) => x.id === S.ui.citaId), c = S.ui.cita, s = S.db.settings;
-    if (!EG.isSlotFree(s, S.db.appts, c.fecha, c.hora, null, S.db.bloqueos, a.id)) { S.toast("Ese horario se acaba de ocupar. Elegí otro."); c.hora = null; return; }
+    if (!EG.isSlotFree(s, S.db.appts, c.fecha, c.hora, null, S.db.bloqueos, a.id) || !EG.dentroDePlazo(s, c.fecha, c.hora)) { S.toast("Ese horario ya no está disponible. Elegí otro."); c.hora = null; return; }
+    if (!EG.puedeReprogramar(s, a)) { S.toast(MOTIVOS.limite_reprogramaciones); return; }
+    a.reprogramaciones = (Number(a.reprogramaciones) || 0) + 1;
     a.fecha = c.fecha;
     a.hora = c.hora;
     S.ui.cita = null;
     S.save();
     S.toast("Listo: tu cita quedó para el " + fechaLarga(a.fecha) + " a las " + a.hora + " hs.");
   };
-  window.addEventListener("hashchange", () => { S.ui.cita = null; });
+  window.addEventListener("hashchange", () => { S.ui.cita = null; S.ui.citaRemota = undefined; });
 })();

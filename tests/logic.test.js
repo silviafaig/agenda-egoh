@@ -103,7 +103,7 @@ test("mensaje de recordatorio: presencial y videollamada", () => {
   assert.match(m1, /• Bikini Cala Moka \(talle 4\)/);
   const vid = cita({ tipo: "video", sala: "showroom-xyz" });
   const m2 = EG.msgRecordatorio(vid, db.settings, g);
-  assert.match(m2, /Es por videollamada\. Entrás desde este link: https:\/\/meet\.jit\.si\/showroom-xyz/);
+  assert.match(m2, /Es por videollamada de WhatsApp: te llamamos a este número a la hora de la cita\./);
   assert.doesNotMatch(m2, /Tenemos listas/);
 });
 

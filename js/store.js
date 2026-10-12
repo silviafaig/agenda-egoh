@@ -71,6 +71,14 @@
   } catch (e) { real = null; }
   if (typeof window !== "undefined") EG.store = EG.createStore(real || memoryStorage(), !!real);
 
+  // Guarda una imagen y devuelve la referencia a usar en "foto"/"logo"/"portada":
+  // en la nube, la URL pública del archivo; en modo local, "local" (queda en el navegador).
+  EG.guardarFoto = function (nombre, dataUrl) {
+    if (EG.remote && EG.remote.on) return EG.remote.subirFoto(nombre, dataUrl);
+    return EG.store.fotoSet(nombre, dataUrl) ? Promise.resolve("local") : Promise.reject(new Error("sin espacio"));
+  };
+  EG.imgSrc = function (ref, nombre) { return ref === "local" ? EG.store.fotoGet(nombre) || "" : ref || ""; };
+
   // Foto de una prenda: archivo del repo ("fotos/…") o foto cargada desde el panel ("local").
   EG.photoSrc = function (p) {
     if (!p) return "";
