@@ -251,7 +251,7 @@ function diagnostico() {
   console.log("Avisos a: " + conf.avisos + " · clave: " + conf.key.slice(0, 10) + "…");
   const s = showroom_(conf);
   console.log("Showroom encontrado: " + conf.slug);
-  const r = sb_(conf, "citas?showroom_id=eq." + s.id + "&select=id,fecha,hora,estado,tipo,token,data&order=data->>creada.desc.nullslast&limit=1");
+  const r = sb_(conf, "citas?showroom_id=eq." + s.id + "&select=id,fecha,hora,estado,tipo,token,data&order=" + encodeURIComponent("data->>creada.desc.nullslast") + "&limit=1");
   if (!r.length) { console.warn("No veo ninguna cita: la clave no tiene permiso o no hay citas."); return; }
   const c = r[0];
   console.log("Última cita: " + c.data.nombre + " · " + c.fecha + " " + c.hora + " · email: " + (c.data.email || "(sin email)") + " · ya avisada: " + (c.data.mailConfirmacion || "no"));
