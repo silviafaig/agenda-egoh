@@ -1,19 +1,17 @@
-/**
- * Agenda Showroom · mails desde Gmail (Google Apps Script).
- *
- * Qué hace:
- *  1. Cuando una clienta reserva: le manda la confirmación y te avisa a vos.
- *  2. Cuando una clienta reprograma o cancela: te avisa.
- *  3. Todos los días a las 10: te manda las citas del próximo día de atención,
- *     cada una con su botón para mandar el recordatorio por WhatsApp.
- *
- * Configuración (Configuración del proyecto → Propiedades de la secuencia de comandos):
- *  SUPABASE_URL          https://raeuxuvshvpczwpnxirk.supabase.co
- *  SUPABASE_SERVICE_KEY  la clave secreta (service_role / secret) de Supabase. No la compartas.
- *  APP_URL               dirección de la agenda, por ejemplo https://turnos.egohmayorista.com.ar/
- *  SHOWROOM              egoh
- *  AVISOS_A              mail donde te llegan los avisos (si falta, se usa el de esta cuenta)
- */
+// Agenda Showroom · mails desde Gmail (Google Apps Script).
+//
+// Qué hace:
+// 1. Cuando una clienta reserva: le manda la confirmación y te avisa a vos.
+// 2. Cuando una clienta reprograma o cancela: te avisa.
+// 3. Todos los días a las 10: te manda las citas del próximo día de atención,
+// cada una con su botón para mandar el recordatorio por WhatsApp.
+//
+// Configuración (Configuración del proyecto → Propiedades de la secuencia de comandos):
+// SUPABASE_URL          https://raeuxuvshvpczwpnxirk.supabase.co
+// SUPABASE_SERVICE_KEY  la clave secreta (service_role / secret) de Supabase. No la compartas.
+// APP_URL               dirección de la agenda, por ejemplo https://turnos.egohmayorista.com.ar
+// SHOWROOM              egoh
+// AVISOS_A              mail donde te llegan los avisos (si falta, se usa el de esta cuenta)
 
 const TZ = "America/Argentina/Buenos_Aires";
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
