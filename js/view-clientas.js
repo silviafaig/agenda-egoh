@@ -34,6 +34,12 @@
           : `<p class="empty">${filtro ? "No hay clientas de este tipo." : "Todavía no hay clientas. Se crean solas con cada reserva, o cargalas con “Nueva clienta”."}</p>`}</div>`;
   }
 
+  // Opciones de "¿Cómo compra?" (Reglas de compra) + la que ya tenga la clienta si no está en la lista.
+  const opcionesComo = (actual) => {
+    const ops = S.db.settings.opcionesComoCompra.slice();
+    if (actual && ops.indexOf(actual) < 0) ops.push(actual);
+    return ops;
+  };
   function ficha(c) {
     const st = EG.clientaStats(S.db, c);
     const hist = st.citas.map((a) => `<div class="card white stack sm"><div class="row between"><span class="b small">${esc(P.cap(fechaLarga(a.fecha)))} · ${esc(a.hora)} hs</span>${U.estadoChip(a)}</div>
@@ -51,7 +57,8 @@
       <div class="cols ficha"><div class="stack"><h2>Historial</h2>${hist || `<p class="empty">Todavía no tiene citas.</p>`}</div>
       <div class="stack">
         <div class="card stack sm"><h3>Contacto</h3><dl class="kv"><dt>WhatsApp</dt><dd class="num">+${esc(c.whatsapp)}</dd><dt>Email</dt><dd>${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : "—"}</dd>
-          <dt>Zona</dt><dd>${esc(c.zona || "—")}</dd><dt>Clienta desde</dt><dd>${desde(c.creada)}</dd></dl></div>
+          <dt>Zona</dt><dd>${esc(c.zona || "—")}</dd><dt>Clienta desde</dt><dd>${desde(c.creada)}</dd></dl>
+          <label class="f" for="cc-${esc(c.id)}">¿Cómo compra?<select class="t" id="cc-${esc(c.id)}" data-change="cl.como" data-c="${esc(c.id)}"><option value="">Sin dato</option>${opcionesComo(c.comoCompra).map((k) => `<option${c.comoCompra === k ? " selected" : ""}>${esc(k)}</option>`).join("")}</select></label></div>
         <div class="card stack sm"><h3>Talles habituales</h3>${st.talles.length ? `<div class="row">${st.talles.map((t) => `<span class="chip dark">Talle ${esc(t)}</span>`).join("")}</div><p class="xs muted">Calculado con lo que eligió y lo que se llevó.</p>` : `<p class="small muted">Todavía no hay datos.</p>`}</div>
         <div class="card stack sm"><label class="f" for="cn-${esc(c.id)}"><h3>Notas</h3><textarea class="t" id="cn-${esc(c.id)}" data-cnote="${esc(c.id)}" placeholder="Preferencias, cómo paga, a quién le vende…">${esc(c.notas)}</textarea></label></div>
       </div></div></div>`;
@@ -63,6 +70,10 @@
   };
 
   const A = EG.actions;
+  EG.changes["cl.como"] = (t) => {
+    const c = S.db.clientas.find((x) => x.id === t.dataset.c);
+    if (c) { c.comoCompra = t.value; S.save(); S.toast("Guardado."); }
+  };
   A["cl.filtro"] = (el) => { S.ui.clFiltro = el.dataset.v; };
   A["cl.ver"] = (el) => { S.ui.clienta = el.dataset.v; S.ui.open = null; if (S.ui.route !== "clientas") { S.go("clientas"); return false; } return "top"; };
   A["cl.volver"] = () => { S.ui.clienta = null; return "top"; };
