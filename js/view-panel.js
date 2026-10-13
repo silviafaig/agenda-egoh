@@ -121,7 +121,7 @@
       <div class="stack lg">
         <div class="stats"><div class="stat bordered"><b class="num">${deHoy.length}</b><span class="small muted">Citas de hoy</span></div>
           <div class="stat bordered"><b class="num">${deHoy.filter((a) => a.tipo === "video").length}</b><span class="small muted">Videollamadas</span></div>
-          <div class="stat bordered"><b class="num">${deHoy.reduce((n, a) => n + a.prendas.length, 0)}</b><span class="small muted">Prendas a preparar</span></div></div>
+          <div class="stat bordered"><b class="num">${deHoy.filter((a) => a.estado === "confirmada").reduce((n, a) => n + a.prendas.filter((i) => i.seLlevo == null).length, 0)}</b><span class="small muted">Prendas a preparar</span></div></div>
         ${avisosHtml("only-mob")}
         <div class="cols"><div class="stack">
           <div class="row between"><h2>Próximas citas</h2><span class="small muted">${prox.length && prox[0].fecha === hoy ? "Hoy" : ""}</span></div>
