@@ -226,7 +226,7 @@
           const p = S.prod(i.id);
           const estado = i.seLlevo === true ? "Se llevó" : i.seLlevo === false ? "No se la llevó" : "Sin registrar";
           return `<div class="dprenda"><span class="dph">${U.photo(p)}</span><div class="stack sm"><h3>${esc(EG.itemName(i, S.prod))}</h3>
-            <span class="small muted">Talle ${esc(i.talle)} · <span class="num">${EG.priceTxt(p)}</span></span>
+            <span class="small muted">Talle ${esc(i.talle)}${EG.priceTxt(p) ? ` · <span class="num">${EG.priceTxt(p)}</span>` : ""}</span>
             <div class="pills"><button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="1" aria-pressed="${i.seLlevo === true}">Se llevó</button>
             <button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="0" aria-pressed="${i.seLlevo === false}">No</button></div>
             <span class="xs muted">${estado}</span></div></div>`;

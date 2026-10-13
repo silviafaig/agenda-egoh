@@ -85,7 +85,7 @@ test("totales y precios", () => {
   const g = getProd(db);
   const items = [{ id: "bikini-cala-black", talle: "3" }, { id: "bikini-mare-olive", talle: "4" }];
   assert.equal(EG.allPriced(items, g), false);
-  assert.equal(EG.priceTxt(g("bikini-cala-black")), "Precio a confirmar");
+  assert.equal(EG.priceTxt(g("bikini-cala-black")), "");
   g("bikini-cala-black").precio = 15000;
   g("bikini-mare-olive").precio = 26000;
   assert.equal(EG.allPriced(items, g), true);
@@ -121,7 +121,7 @@ test("mensaje de seguimiento: solo las prendas que no se llevó", () => {
   const m = EG.msgSeguimiento(a, db.settings, g);
   assert.match(m, /Gracias por tu visita a EGOH\./);
   assert.doesNotMatch(m, /Cala Black/);
-  assert.match(m, /• Bikini Luce Cream Botanic \(talle 2\) – Precio a confirmar/);
+  assert.match(m, /• Bikini Luce Cream Botanic \(talle 2\)$/m);
   assert.match(m, /• Bikini Sole Olive \(talle 4\)/);
 });
 

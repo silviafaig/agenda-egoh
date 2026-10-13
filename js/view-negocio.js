@@ -29,7 +29,7 @@
       <div class="fgrid two">
         <label class="f full" for="pf-nombre">Nombre<input class="t" id="pf-nombre" value="${esc(e.nombre)}" data-bind="editProd.nombre" placeholder="Ej: Bikini Cala Black" required></label>
         <label class="f" for="pf-cat">Categoría<select class="t" id="pf-cat" data-bind="editProd.categoria">${EG.CATEGORIAS.map((c) => `<option${e.categoria === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
-        <label class="f" for="pf-precio">Precio mayorista<input class="t num" id="pf-precio" type="number" inputmode="numeric" min="0" step="100" value="${esc(e.precio)}" data-bind="editProd.precio" placeholder="Vacío = a confirmar"></label>
+        <label class="f" for="pf-precio">Precio mayorista<input class="t num" id="pf-precio" type="number" inputmode="numeric" min="0" step="100" value="${esc(e.precio)}" data-bind="editProd.precio" placeholder="Vacío o 0 = no se muestra"></label>
         <label class="f" for="pf-modelo">Modelo <span class="hint">para Métricas</span><input class="t" id="pf-modelo" value="${esc(e.modelo)}" data-bind="editProd.modelo" placeholder="Ej: Cala"></label>
         <label class="f" for="pf-color">Color<input class="t" id="pf-color" value="${esc(e.color)}" data-bind="editProd.color" placeholder="Ej: Black"></label>
         <label class="f full" for="pf-talles">Talles (separados por coma)<input class="t" id="pf-talles" value="${esc(e.tallesTxt)}" data-bind="editProd.tallesTxt" placeholder="1, 2, 3, 4, 5, 6"></label>
@@ -52,7 +52,7 @@
         ${S.ui.editProd ? formProd(S.ui.editProd) : ""}
         ${lista.length
           ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">${lista.map((p) => `<div class="prod"><div class="ph">${U.photo(p)}</div><div class="body"><h3>${esc(p.nombre)}</h3>
-              <p class="xs num muted">${EG.priceTxt(p)} · ${U.plural(p.talles.length, "talle")}</p>
+              <p class="xs num muted">${EG.priceTxt(p) ? EG.priceTxt(p) + " · " : ""}${U.plural(p.talles.length, "talle")}</p>
               <button type="button" class="btn xs" style="align-self:flex-start" data-act="cat.editar" data-v="${esc(p.id)}">${I("pencil", 13)}Editar</button></div></div>`).join("")}</div>`
           : `<p class="empty">Todavía no hay prendas en esta categoría. Usá “Agregar prenda” para cargar la primera.</p>`}</div>`;
   };

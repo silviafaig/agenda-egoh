@@ -170,17 +170,20 @@ function enviar_(para, mail, responderA) {
 function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
-    if (!/^[a-z0-9]{6,40}$/.test(body.id || "") || !/^[a-f0-9]{16,64}$/.test(body.token || "")) return salida_({ error: "datos" });
+    console.log("aviso recibido: " + JSON.stringify({ tipo: body.tipo, id: body.id }));
+    if (!/^[a-z0-9]{6,40}$/.test(body.id || "") || !/^[a-f0-9]{16,64}$/.test(body.token || "")) { console.warn("datos inválidos"); return salida_({ error: "datos" }); }
     const conf = cfg_();
     const s = showroom_(conf);
     const r = sb_(conf, "citas?showroom_id=eq." + s.id + "&id=eq." + body.id + "&token=eq." + body.token + "&select=id,fecha,hora,estado,tipo,token,data");
-    if (!r.length) return salida_({ error: "no_encontrada" });
+    if (!r.length) { console.warn("no encontré la cita " + body.id + " (¿clave secreta correcta?)"); return salida_({ error: "no_encontrada" }); }
     const c = r[0];
     const cfg = s.config;
     if (body.tipo === "reserva") {
       if (c.data.mailConfirmacion) return salida_({ ok: true, repetido: true });
-      if (c.data.email) enviar_(c.data.email, mailConfirmacion_(c, cfg, conf.app), conf.avisos);
+      if (c.data.email) { enviar_(c.data.email, mailConfirmacion_(c, cfg, conf.app), conf.avisos); console.log("confirmación enviada a " + c.data.email); }
+      else console.log("la cita no tiene email: no se manda confirmación a la clienta");
       enviar_(conf.avisos, mailAvisoReserva_(c, cfg, conf.app));
+      console.log("aviso enviado a " + conf.avisos);
       c.data.mailConfirmacion = new Date().toISOString();
       sb_(conf, "citas?showroom_id=eq." + s.id + "&id=eq." + c.id, { method: "patch", body: { data: c.data } });
     } else if (body.tipo === "cambio") {
@@ -241,6 +244,20 @@ function instalarTareaDiaria() {
   ScriptApp.getProjectTriggers().filter((t) => ["resumenDiario", "copiaSemanal"].indexOf(t.getHandlerFunction()) >= 0).forEach((t) => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger("resumenDiario").timeBased().everyDays(1).atHour(10).inTimezone(TZ).create();
   ScriptApp.newTrigger("copiaSemanal").timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).inTimezone(TZ).create();
+}
+// Diagnóstico: ejecutalo desde el editor. Revisa la conexión y manda los mails de la última reserva.
+function diagnostico() {
+  const conf = cfg_();
+  console.log("Avisos a: " + conf.avisos + " · clave: " + conf.key.slice(0, 10) + "…");
+  const s = showroom_(conf);
+  console.log("Showroom encontrado: " + conf.slug);
+  const r = sb_(conf, "citas?showroom_id=eq." + s.id + "&select=id,fecha,hora,estado,tipo,token,data&order=" + encodeURIComponent("data->>creada.desc.nullslast") + "&limit=1");
+  if (!r.length) { console.warn("No veo ninguna cita: la clave no tiene permiso o no hay citas."); return; }
+  const c = r[0];
+  console.log("Última cita: " + c.data.nombre + " · " + c.fecha + " " + c.hora + " · email: " + (c.data.email || "(sin email)") + " · ya avisada: " + (c.data.mailConfirmacion || "no"));
+  if (c.data.email) { enviar_(c.data.email, mailConfirmacion_(c, s.config, conf.app), conf.avisos); console.log("Confirmación enviada a " + c.data.email); }
+  enviar_(conf.avisos, mailAvisoReserva_(c, s.config, conf.app));
+  console.log("Aviso enviado a " + conf.avisos + ". Revisá las dos casillas (y spam).");
 }
 // Para probar: te manda a vos el resumen del próximo día de atención y los recordatorios a las clientas (si hay citas).
 function probarResumen() { resumenDiario(); }

@@ -156,7 +156,7 @@
 
   /* ---------- prendas y totales ---------- */
   EG.priceTxt = function (p) {
-    return p && p.precio > 0 ? EG.money(p.precio) : "Precio a confirmar";
+    return p && p.precio > 0 ? EG.money(p.precio) : "";
   };
   EG.totalOf = function (prendas, getProd) {
     return prendas.reduce(function (s, i) {
@@ -206,7 +206,7 @@
 
   function linea(it, getProd, conPrecio) {
     var t = "• " + EG.itemName(it, getProd) + " (talle " + it.talle + ")";
-    if (conPrecio) t += " – " + EG.priceTxt(getProd(it.id));
+    if (conPrecio && EG.priceTxt(getProd(it.id))) t += " – " + EG.priceTxt(getProd(it.id));
     return t;
   }
   EG.msgRecordatorio = function (a, settings, getProd, link) {
