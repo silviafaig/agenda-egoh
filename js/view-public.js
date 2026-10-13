@@ -127,7 +127,8 @@
       ${S.ui.slotMsg ? `<p class="notice bad" role="alert">${esc(S.ui.slotMsg)}</p>` : ""}
       <div class="fecha2"><div class="stack"><h3>Día</h3>${daysHtml(s, b.fecha, "pub.date")}</div>
         <div class="stack"><h3>Horario · <span class="muted" style="font-weight:400">${esc(fechaLarga(b.fecha))}</span></h3>${slotsHtml(s, b.fecha, b.hora, "pub.time")}</div></div>
-      <button type="button" class="btn dark block" data-act="pub.next" ${b.hora ? "" : "disabled"}>Elegir prendas</button>`;
+      <div class="stack sm"><button type="button" class="btn dark block" data-act="pub.next" ${b.hora ? "" : "disabled"}>Elegir prendas</button>
+        <button type="button" class="btn block" data-act="pub.sinPrendas" ${b.hora ? "" : "disabled"}>Seguir sin elegir prendas</button></div>`;
   }
 
   function prodCard(p, b) {
@@ -313,6 +314,12 @@
     if ((st === 0 && !b.tipo) || (st === 1 && !b.hora)) return false;
     S.ui.step = Math.min(4, st + 1);
     S.ui.formErr = "";
+    return "top";
+  };
+  A["pub.sinPrendas"] = () => {
+    const b = S.ui.booking;
+    if (!b.hora) return false;
+    b.prendas = []; S.ui.step = 3; S.ui.formErr = "";
     return "top";
   };
   A["pub.back"] = () => { S.ui.step = Math.max(0, S.ui.step - 1); S.ui.formErr = ""; return "top"; };
