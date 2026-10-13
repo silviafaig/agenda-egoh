@@ -213,6 +213,15 @@
     const d = EG.parseYmd(ymd);
     return cap(fechaLarga(ymd).split(" ")[0]) + " " + d.getDate() + " de " + MESES_L[d.getMonth()] + " de " + d.getFullYear();
   }
+  // Buscador para sumar prendas a una cita (por ejemplo, si en la visita se probó otros modelos).
+  function agregarPrendas(a) {
+    return `<div class="card bordered stack sm" data-fscope><div class="row between"><h3>Agregar prendas</h3><button type="button" class="btn sm" data-act="ag.addPrenda" data-a="">Listo</button></div>
+      <p class="xs muted">Tocá el talle para sumarla a la cita.</p>
+      <label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar prenda</span><input class="t" type="search" placeholder="Buscar prenda" value="${esc(S.ui.addQ || "")}" data-bind="addQ" data-filter=".pickbox .rowitem"></label>
+      <div class="pickbox" data-keepscroll="addprenda">${S.db.products.map((p) => `<div class="rowitem" data-s="${esc(p.nombre + " " + p.categoria)}">${U.thumbs([{ id: p.id }], 1)}<span class="grow small">${esc(p.nombre)}</span>
+        <div class="sizes">${p.talles.map((z) => { const ya = a.prendas.some((i) => i.id === p.id && i.talle === z); return `<button type="button" class="size" data-act="ag.sumarPrenda" data-a="${esc(a.id)}" data-p="${esc(p.id)}" data-v="${esc(z)}" aria-pressed="${ya}" aria-label="${esc(p.nombre)} talle ${esc(z)}">${esc(z)}</button>`; }).join("")}</div></div>`).join("")}</div>
+      <p class="small muted" data-fempty hidden>No hay prendas con ese nombre.</p></div>`;
+  }
   function detalle(a) {
     const s = S.db.settings;
     const msgRec = EG.msgRecordatorio(a, s, S.prod, S.citaLink(a));
@@ -229,7 +238,7 @@
             <span class="small muted">Talle ${esc(i.talle)}${EG.priceTxt(p) ? ` · <span class="num">${EG.priceTxt(p)}</span>` : ""}</span>
             <div class="pills"><button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="1" aria-pressed="${i.seLlevo === true}">Se llevó</button>
             <button type="button" class="pill" data-act="ag.take" data-a="${esc(a.id)}" data-i="${ix}" data-v="0" aria-pressed="${i.seLlevo === false}">No</button></div>
-            <span class="xs muted">${estado}</span></div></div>`;
+            <div class="row between"><span class="xs muted">${estado}</span><button type="button" class="linkbtn xs" data-act="ag.quitarPrenda" data-a="${esc(a.id)}" data-i="${ix}">Quitar</button></div></div></div>`;
         }).join("")
       : `<p class="empty">No eligió prendas antes de la cita.</p>`;
     return `<button type="button" class="back" data-act="ag.close">${I("arrow-left", 16)}Volver a Agenda</button>
@@ -244,7 +253,8 @@
           <div class="dgrid">${campo("WhatsApp", `<span class="num">+${esc(a.whatsapp)}</span>`)}${campo("Email", a.email ? `<a href="mailto:${esc(a.email)}">${esc(a.email)}</a>` : "")}
             ${campo("¿Cómo comprás?", esc(a.comoCompra))}${campo("Zona", esc(a.zona))}${campo("Lo que busca", esc(a.queBusca))}</div></section>
         <section class="stack"><div class="row between"><h2>Prendas elegidas</h2><span class="small muted">${U.plural(a.prendas.length, "prenda")}</span></div>${prendas}
-          ${a.prendas.length ? `<p class="xs muted">Marcá qué se llevó al finalizar la cita.</p>` : ""}</section>
+          ${a.prendas.length ? `<p class="xs muted">Marcá qué se llevó al finalizar la cita.</p>` : ""}
+          ${S.ui.addPrenda === a.id ? agregarPrendas(a) : `<button type="button" class="btn sm" style="align-self:flex-start" data-act="ag.addPrenda" data-a="${esc(a.id)}">${I("plus", 15)}Agregar prenda</button>`}</section>
         ${a.estado === "asistio"
           ? `<section class="card bordered stack"><h3>Seguimiento</h3><div class="mail">${esc(msgSeg)}</div>
               <div class="row"><a class="btn sm dark" href="${esc(EG.waLink(a.whatsapp, msgSeg))}" target="_blank" rel="noopener">${I("message-circle", 15)}Enviar por WhatsApp</a>
@@ -396,7 +406,7 @@
     S.toast("Cita eliminada.");
     return "top";
   };
-  A["ag.close"] = () => { S.ui.open = null; S.ui.avisar = null; return "top"; };
+  A["ag.close"] = () => { S.ui.open = null; S.ui.avisar = null; S.ui.addPrenda = null; return "top"; };
   // Marca la cita como recordada (el link abre WhatsApp igual, porque no se cancela el click).
   // Vuelve a dejar la cita como pendiente de recordatorio (por ejemplo, si se tocó "Enviar" sin mandarlo).
   A["rec.desmarcar"] = (el) => {
@@ -416,6 +426,20 @@
   EG.changes["ag.desde"] = (t) => { S.ui.agDesde = t.value; S.ui.open = null; };
   EG.changes["ag.hasta"] = (t) => { S.ui.agHasta = t.value; S.ui.open = null; };
   A["ag.desbloquear"] = (el) => { S.db.bloqueos = S.db.bloqueos.filter((b) => b.id !== el.dataset.v); S.save(); S.toast("Bloqueo quitado."); };
+  A["ag.addPrenda"] = (el) => { S.ui.addPrenda = el.dataset.a || null; S.ui.addQ = ""; };
+  // Suma la prenda en ese talle; si ya estaba en ese talle, la saca.
+  A["ag.sumarPrenda"] = (el) => {
+    const a = S.db.appts.find((x) => x.id === el.dataset.a), p = S.prod(el.dataset.p);
+    if (!a || !p) return;
+    const ix = a.prendas.findIndex((i) => i.id === p.id && i.talle === el.dataset.v);
+    if (ix >= 0) a.prendas.splice(ix, 1);
+    else a.prendas.push({ id: p.id, nombre: p.nombre, talle: el.dataset.v, seLlevo: null });
+    S.save();
+  };
+  A["ag.quitarPrenda"] = (el) => {
+    const a = S.db.appts.find((x) => x.id === el.dataset.a);
+    if (a) { a.prendas.splice(+el.dataset.i, 1); S.save(); }
+  };
   A["ag.take"] = (el) => {
     const a = S.db.appts.find((x) => x.id === el.dataset.a);
     const it = a.prendas[+el.dataset.i];
