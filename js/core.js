@@ -158,6 +158,8 @@
   EG.priceTxt = function (p) {
     return p && p.precio > 0 ? EG.money(p.precio) : "";
   };
+  // ¿Se muestran los precios a las clientas? (Reglas de compra → Precios). Por defecto sí.
+  EG.verPrecios = function (s) { return !s || s.mostrarPrecios !== false; };
   EG.totalOf = function (prendas, getProd) {
     return prendas.reduce(function (s, i) {
       var p = getProd(i.id);
@@ -236,7 +238,7 @@
     var pend = a.prendas.filter(function (i) { return i.seLlevo !== true; });
     var t = "¡Hola " + nombre + "! Gracias por tu visita a " + settings.nombre + ".";
     if (pend.length) {
-      t += "\nTe dejo las prendas que viste y no llevaste, por si las querés sumar:\n" + pend.map(function (i) { return linea(i, getProd, true); }).join("\n");
+      t += "\nTe dejo las prendas que viste y no llevaste, por si las querés sumar:\n" + pend.map(function (i) { return linea(i, getProd, EG.verPrecios(settings)); }).join("\n");
     }
     t += "\n\nCualquier cosa, escribime por acá.";
     return t;

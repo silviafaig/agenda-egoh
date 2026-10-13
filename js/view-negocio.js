@@ -331,12 +331,13 @@
   /* ---------- Reglas de compra ---------- */
   P.VISTAS.reglas = () => {
     const s = S.db.settings;
-    if (!S.ui.draft) S.ui.draft = { compraMinima: s.compraMinima, nota: s.compraMinimaNota || "", opciones: s.opcionesComoCompra.slice(), nueva: "" };
+    if (!S.ui.draft) S.ui.draft = { compraMinima: s.compraMinima, nota: s.compraMinimaNota || "", precios: EG.verPrecios(s), opciones: s.opcionesComoCompra.slice(), nueva: "" };
     const d = S.ui.draft;
     return `${P.title("Reglas de compra", "Se muestran a la clienta al reservar.", `<button type="submit" form="reg-form" class="btn sm dark">Guardar cambios</button>`)}
       ${wrap(`${errHtml()}<form class="stack lg" id="reg-form" novalidate>
         ${sec("Compra mínima", "Poné 0 si no hay mínimo.", `<div class="fgrid two">${fld("r-min", "Monto", "compraMinima", "number", 'min="0" step="1000" inputmode="numeric"')}${fld("r-nota", "Aclaración", "nota", "text", 'placeholder="Ej: por tiempo limitado"')}</div>
           ${Number(d.compraMinima) > 0 ? `<p class="small muted">La clienta ve: “Compra mínima ${money(Number(d.compraMinima))}${d.nota ? " " + esc(d.nota) : ""}”.</p>` : ""}`)}
+        ${sec("Precios", "Si lo apagás, las clientas no ven precios ni totales al reservar. Los precios quedan guardados en el Catálogo y en Métricas.", `<label class="check"><input type="checkbox" data-bind="draft.precios" ${d.precios ? "checked" : ""}>Mostrar precios a las clientas</label>`)}
         ${sec("Opciones de “¿Cómo comprás?”", "La clienta elige una al reservar.", `<div class="row">${d.opciones.map((o, i) => `<span class="chip" style="padding:6px 8px 6px 12px;font-size:13px">${esc(o)}<button type="button" class="iconbtn sm" style="width:22px;height:22px;border:0" data-act="reg.quitar" data-v="${i}" aria-label="Quitar ${esc(o)}">${I("x", 12)}</button></span>`).join("")}</div>
           <div class="row nowrap"><input class="t" style="max-width:280px" placeholder="Nueva opción" value="${esc(d.nueva)}" data-bind="draft.nueva" aria-label="Nueva opción"><button type="button" class="btn sm" data-act="reg.agregar">${I("plus", 15)}Agregar</button></div>`)}</form>`)}`;
   };
@@ -349,7 +350,7 @@
   EG.submits["reg-form"] = () => {
     const d = S.ui.draft;
     if (!d.opciones.length) { S.ui.draftErr = "Dejá al menos una opción de “¿Cómo comprás?”."; return "top"; }
-    Object.assign(S.db.settings, { compraMinima: Math.max(0, Math.round(Number(d.compraMinima) || 0)), compraMinimaNota: d.nota.trim(), opcionesComoCompra: d.opciones.slice() });
+    Object.assign(S.db.settings, { compraMinima: Math.max(0, Math.round(Number(d.compraMinima) || 0)), compraMinimaNota: d.nota.trim(), mostrarPrecios: !!d.precios, opcionesComoCompra: d.opciones.slice() });
     S.save();
     S.ui.draft = null;
     S.ui.draftErr = "";
