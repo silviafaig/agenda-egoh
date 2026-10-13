@@ -119,10 +119,10 @@ test("mensaje de seguimiento: solo las prendas que no se llevó", () => {
     ]
   });
   const m = EG.msgSeguimiento(a, db.settings, g);
-  assert.match(m, /Gracias por tu visita a EGOH\./);
-  assert.doesNotMatch(m, /Cala Black/);
-  assert.match(m, /• Bikini Luce Cream Botanic \(talle 2\)$/m);
-  assert.match(m, /• Bikini Sole Olive \(talle 4\)/);
+  assert.match(m, /Gracias por tu visita a EGOH\. Esperamos que disfrutes tu compra\./);
+  assert.doesNotMatch(m, /Cala Black|Luce/);
+  a.seguimiento = "Texto propio";
+  assert.equal(EG.msgSeguimiento(a, db.settings, g), "Texto propio");
 });
 
 test("una prenda borrada del catálogo se sigue mostrando por su nombre guardado", () => {
