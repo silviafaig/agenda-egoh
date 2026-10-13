@@ -256,8 +256,9 @@
           ${a.prendas.length ? `<p class="xs muted">Marcá qué se llevó al finalizar la cita.</p>` : ""}
           ${S.ui.addPrenda === a.id ? agregarPrendas(a) : `<button type="button" class="btn sm" style="align-self:flex-start" data-act="ag.addPrenda" data-a="${esc(a.id)}">${I("plus", 15)}Agregar prenda</button>`}</section>
         ${a.estado === "asistio"
-          ? `<section class="card bordered stack"><h3>Seguimiento</h3><div class="mail">${esc(msgSeg)}</div>
-              <div class="row"><a class="btn sm dark" href="${esc(EG.waLink(a.whatsapp, msgSeg))}" target="_blank" rel="noopener">${I("message-circle", 15)}Enviar por WhatsApp</a>
+          ? `<section class="card bordered stack"><h3>Seguimiento</h3><p class="xs muted">Podés cambiar el texto antes de mandarlo; queda guardado en esta cita.</p>
+              <textarea class="t" rows="4" aria-label="Mensaje de seguimiento" data-seg="${esc(a.id)}">${esc(msgSeg)}</textarea>
+              <div class="row"><a class="btn sm dark" data-seglink="${esc(a.id)}" href="${esc(EG.waLink(a.whatsapp, msgSeg))}" target="_blank" rel="noopener">${I("message-circle", 15)}Enviar por WhatsApp</a>
               <button type="button" class="btn sm" data-act="ag.copiarSeg" data-a="${esc(a.id)}">${I("copy", 15)}Copiar</button></div></section>`
           : ""}
       </div><div class="stack lg">

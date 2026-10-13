@@ -164,6 +164,15 @@
       if (a) { a.notas = t.value; S.save(); }
       return;
     }
+    if (t.dataset.seg) {
+      const a = S.db.appts.find((x) => x.id === t.dataset.seg);
+      if (a) {
+        a.seguimiento = t.value; S.save();
+        const link = document.querySelector('[data-seglink="' + a.id + '"]');
+        if (link) link.href = EG.waLink(a.whatsapp, t.value);
+      }
+      return;
+    }
     if (t.dataset.cnote) {
       const c = S.db.clientas.find((x) => x.id === t.dataset.cnote);
       if (c) { c.notas = t.value; S.save(); }

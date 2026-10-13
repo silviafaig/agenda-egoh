@@ -233,15 +233,12 @@
     if (link) t += "\n\nSi necesitás reprogramar o cancelar, entrá acá: " + link;
     return t;
   };
-  EG.msgSeguimiento = function (a, settings, getProd) {
+  // Mensaje de seguimiento después de la visita. Es editable en el detalle de la cita (a.seguimiento);
+  // si no se editó, se arma un agradecimiento.
+  EG.msgSeguimiento = function (a, settings) {
+    if (typeof a.seguimiento === "string") return a.seguimiento;
     var nombre = a.nombre.split(" ")[0];
-    var pend = a.prendas.filter(function (i) { return i.seLlevo !== true; });
-    var t = "¡Hola " + nombre + "! Gracias por tu visita a " + settings.nombre + ".";
-    if (pend.length) {
-      t += "\nTe dejo las prendas que viste y no llevaste, por si las querés sumar:\n" + pend.map(function (i) { return linea(i, getProd, EG.verPrecios(settings)); }).join("\n");
-    }
-    t += "\n\nCualquier cosa, escribime por acá.";
-    return t;
+    return "¡Hola " + nombre + "! Gracias por tu visita a " + settings.nombre + ". Esperamos que disfrutes tu compra.\nCualquier consulta, escribinos por acá.";
   };
 
   /* ---------- carga masiva de fotos ---------- */
