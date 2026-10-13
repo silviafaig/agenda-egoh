@@ -281,7 +281,9 @@
     return `<form class="modal" id="mod-reserva" novalidate role="dialog" aria-modal="true" aria-label="Nueva reserva">${mhead("Nueva reserva")}
       <div class="stack sm"><span class="label">Tipo de cita</span><div class="seg"><button type="button" data-act="mod.set" data-k="tipo" data-v="presencial" aria-pressed="${m.tipo === "presencial"}">Presencial</button><button type="button" data-act="mod.set" data-k="tipo" data-v="video" aria-pressed="${m.tipo === "video"}">Videollamada</button></div></div>
       <label class="f" for="m-fecha">Día<input class="t num" id="m-fecha" type="date" value="${esc(m.fecha)}" data-bind="modal.fecha" data-change="mod.fecha"></label>
-      ${m.fecha ? (sl.length ? `<div class="stack sm"><span class="label">Horario</span><div class="slots">${sl.map((x) => `<button type="button" class="slot num" data-act="mod.set" data-k="hora" data-v="${x.h}" ${x.off ? "disabled" : ""} aria-pressed="${m.hora === x.h}">${x.h}</button>`).join("")}</div></div>` : `<p class="small muted">Ese día no hay atención.</p>`) : ""}
+      <label class="check"><input type="checkbox" data-bind="modal.libre" data-change="mod.libre" ${m.libre ? "checked" : ""}>Horario libre (cualquier día y hora, aunque ya haya pasado o esté ocupado)</label>
+      ${m.libre ? `<label class="f" for="m-hora" style="max-width:180px">Hora<input class="t num" id="m-hora" type="time" step="300" value="${esc(m.hora || "")}" data-bind="modal.hora"></label>`
+      : m.fecha ? (sl.length ? `<div class="stack sm"><span class="label">Horario</span><div class="slots">${sl.map((x) => `<button type="button" class="slot num" data-act="mod.set" data-k="hora" data-v="${x.h}" ${x.off ? "disabled" : ""} aria-pressed="${m.hora === x.h}">${x.h}</button>`).join("")}</div></div>` : `<p class="small muted">Ese día no hay atención.</p>`) : ""}
       <div class="stack sm"><span class="label">Clienta</span>
         ${cli ? `<div class="row nowrap card" style="padding:10px 12px">${U.avatar(cli.nombre)}<span class="grow"><span class="rname">${esc(cli.nombre)}</span><span class="rsub num">+${esc(cli.whatsapp)}</span></span><button type="button" class="linkbtn" data-act="mod.set" data-k="clientaId" data-v="">Cambiar</button></div>`
         : `<div class="seg"><button type="button" data-act="mod.set" data-k="modoCli" data-v="buscar" aria-pressed="${m.modoCli === "buscar"}">Buscar clienta</button><button type="button" data-act="mod.set" data-k="modoCli" data-v="nueva" aria-pressed="${m.modoCli === "nueva"}">Nueva clienta</button></div>
@@ -526,7 +528,8 @@
     if (el.dataset.k === "fecha") m.hora = null;
     m.err = "";
   };
-  EG.changes["mod.fecha"] = () => { if (S.ui.modal.kind === "reserva") S.ui.modal.hora = null; };
+  EG.changes["mod.fecha"] = () => { if (S.ui.modal.kind === "reserva" && !S.ui.modal.libre) S.ui.modal.hora = null; };
+  EG.changes["mod.libre"] = () => { S.ui.modal.hora = null; return true; };
   A["mod.size"] = (el) => {
     const m = S.ui.modal, id = el.dataset.p, talle = el.dataset.v;
     const ex = m.prendas.find((i) => i.id === id);
@@ -540,6 +543,7 @@
     const m = S.ui.modal, s = S.db.settings;
     const fail = (t) => { m.err = t; };
     if (!m.fecha || !m.hora) return fail("Elegí el día y el horario.");
+    if (m.libre && !/^\d{2}:\d{2}$/.test(m.hora)) return fail("Escribí la hora, por ejemplo 16:00.");
     let c;
     if (m.clientaId) c = S.db.clientas.find((x) => x.id === m.clientaId);
     else {
@@ -549,7 +553,7 @@
       if (!wa) return fail("Revisá el WhatsApp: con código de área, por ejemplo 11 5555 0101.");
       c = EG.upsertClienta(S.db, { nombre: m.nombre, whatsapp: wa, email: m.email, zona: m.zona, comoCompra: m.comoCompra });
     }
-    if (!EG.isSlotFree(s, S.db.appts, m.fecha, m.hora, new Date(), S.db.bloqueos)) return fail("Ese horario ya no está libre. Elegí otro.");
+    if (!m.libre && !EG.isSlotFree(s, S.db.appts, m.fecha, m.hora, new Date(), S.db.bloqueos)) return fail("Ese horario ya no está libre. Elegí otro.");
     const a = {
       id: EG.uid(), fecha: m.fecha, hora: m.hora, tipo: m.tipo, estado: "confirmada",
       nombre: c.nombre, whatsapp: c.whatsapp, email: c.email, zona: c.zona, comoCompra: c.comoCompra, queBusca: "",
