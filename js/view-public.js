@@ -133,7 +133,7 @@
   function prodCard(p, b) {
     const sel = b.prendas.find((i) => i.id === p.id);
     return `<div class="prod${sel ? " sel" : ""}" data-card="${esc(p.id)}" data-s="${esc(p.nombre + " " + (p.modelo || ""))}"><div class="ph">${U.photo(p)}${sel ? `<span class="chip tag">Talle ${esc(sel.talle)}</span>` : ""}</div>
-      <div class="body"><h3>${esc(p.nombre)}</h3><p class="num xs muted">${EG.priceTxt(p)}</p>
+      <div class="body"><h3>${esc(p.nombre)}</h3>${EG.priceTxt(p) ? `<p class="num xs muted">${EG.priceTxt(p)}</p>` : ""}
       <div class="sizes" role="group" aria-label="Talles de ${esc(p.nombre)}">${p.talles.map((z) =>
         `<button type="button" class="size" data-act="pub.size" data-p="${esc(p.id)}" data-v="${esc(z)}" aria-label="Talle ${esc(z)}" aria-pressed="${!!sel && sel.talle === z}">${esc(z)}</button>`).join("")}</div></div></div>`;
   }
@@ -217,7 +217,7 @@
       <div class="resumen2"><div class="stack">
         ${blk("Tu cita", 1, `<dl class="kv"><dt>Tipo</dt><dd>${U.tipoTxt(b)}</dd><dt>Cuándo</dt><dd>${esc(P1(fechaLarga(b.fecha)))}, ${esc(b.hora)} hs</dd>${b.tipo === "presencial" ? `<dt>Dónde</dt><dd>${esc(s.direccion.split(",")[0])}</dd>` : ""}</dl>`)}
         ${blk("Prendas", 2, n
-          ? `<div class="stack sm">${b.prendas.map((i) => `<div class="pickrow">${U.thumbs([i], 1)}<span class="grow">${esc(EG.itemName(i, S.prod))}<br><span class="muted xs">Talle ${esc(i.talle)} · ${EG.priceTxt(S.prod(i.id))}</span></span></div>`).join("")}</div>${priced ? `<p class="small"><b>Total: <span class="num">${money(EG.totalOf(b.prendas, S.prod))}</span></b></p>` : ""}`
+          ? `<div class="stack sm">${b.prendas.map((i) => `<div class="pickrow">${U.thumbs([i], 1)}<span class="grow">${esc(EG.itemName(i, S.prod))}<br><span class="muted xs">Talle ${esc(i.talle)}${EG.priceTxt(S.prod(i.id)) ? " · " + EG.priceTxt(S.prod(i.id)) : ""}</span></span></div>`).join("")}</div>${priced ? `<p class="small"><b>Total: <span class="num">${money(EG.totalOf(b.prendas, S.prod))}</span></b></p>` : ""}`
           : `<p class="small muted">Sin preselección: elegís en la cita.</p>`)}
         ${blk("Tus datos", 3, `<dl class="kv"><dt>Nombre</dt><dd>${esc(b.nombre)}</dd><dt>WhatsApp</dt><dd class="num">${esc(b.whatsapp)}</dd><dt>Email</dt><dd>${esc(b.email)}</dd>${b.zona ? `<dt>Zona</dt><dd>${esc(b.zona)}</dd>` : ""}<dt>Comprás</dt><dd>${esc(b.comoCompra)}</dd>${b.queBusca ? `<dt>Buscás</dt><dd>${esc(b.queBusca)}</dd>` : ""}</dl>`)}
       </div><div class="stack">${antesDeVenir(s, b.tipo)}
