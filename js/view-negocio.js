@@ -46,14 +46,15 @@
           <input class="sr-only" type="file" accept="image/*" multiple data-change="cat.masivo" ${S.ui.busy ? "disabled" : ""}></label>
         <button type="button" class="btn sm" data-act="precios.abrir">${I("pencil", 15)}Cambiar precios</button>
         <button type="button" class="btn sm dark" data-act="cat.nueva">${I("plus", 15)}Agregar prenda</button>`)}
-      <div class="stack lg">
+      <div class="stack lg" data-fscope>
         <p class="notice soft">Carga masiva: elegí varias fotos juntas y cada una se asigna a su prenda por el nombre del archivo, con el formato <b>Bikini_Modelo_Color_01.jpg</b> (por ejemplo <i>Bikini_Cala_Black_01.jpg</i>). Se usa la <b>_01</b>, salvo en Reversible Vela Malbec / Black, que usa la <b>_02</b>.</p>
-        ${fotoMsg()}${U.cats(S.ui.catPanel, "cat.filtro")}
+        ${fotoMsg()}<label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar prenda</span><input class="t" type="search" placeholder="Buscar prenda por nombre" value="${esc(S.ui.catQ || "")}" data-bind="catQ" data-filter="[data-pcard]"></label>
+        ${U.cats(S.ui.catPanel, "cat.filtro")}
         ${S.ui.editProd ? formProd(S.ui.editProd) : ""}
         ${lista.length
-          ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">${lista.map((p) => `<div class="prod"><div class="ph">${U.photo(p)}</div><div class="body"><h3>${esc(p.nombre)}</h3>
+          ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">${lista.map((p) => `<div class="prod" data-pcard data-s="${esc(p.nombre + " " + (p.modelo || ""))}"><div class="ph">${U.photo(p)}</div><div class="body"><h3>${esc(p.nombre)}</h3>
               <p class="xs num muted">${EG.priceTxt(p) ? EG.priceTxt(p) + " · " : ""}${U.plural(p.talles.length, "talle")}</p>
-              <button type="button" class="btn xs" style="align-self:flex-start" data-act="cat.editar" data-v="${esc(p.id)}">${I("pencil", 13)}Editar</button></div></div>`).join("")}</div>`
+              <button type="button" class="btn xs" style="align-self:flex-start" data-act="cat.editar" data-v="${esc(p.id)}">${I("pencil", 13)}Editar</button></div></div>`).join("")}</div><p class="empty" data-fempty hidden>No hay prendas con ese nombre en esta categoría.</p>`
           : `<p class="empty">Todavía no hay prendas en esta categoría. Usá “Agregar prenda” para cargar la primera.</p>`}</div>`;
   };
 
