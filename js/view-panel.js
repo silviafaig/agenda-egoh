@@ -331,9 +331,9 @@
     const r = P.porRecordar(), s = S.db.settings;
     const lista = r.todas || [];
     return `<div class="modal" role="dialog" aria-modal="true" aria-label="Recordatorios">${mhead("Recordatorios por WhatsApp")}
-      <p class="small muted">Citas ${esc(r.de || "")}. Tocá “Enviar” en cada una: se abre WhatsApp con el mensaje listo, con el link para reprogramar o cancelar.</p>
+      <p class="small muted">Citas ${esc(r.de || "")}. Tocá “Enviar” en cada una: se abre WhatsApp con el mensaje listo, con el link para reprogramar o cancelar. Si tocaste “Enviar” y no lo mandaste, usá “Desmarcar”.</p>
       ${lista.length ? `<div class="rows">${lista.map((a) => `<div class="rowitem"><span class="time num">${esc(a.hora)}</span><span class="grow"><span class="rname">${esc(a.nombre)}</span><span class="rsub">${U.tipoTxt(a, true)}</span></span>
-        ${a.recordatorio ? `<span class="chip ok">${I("check", 12)}Enviado</span>` : ""}
+        ${a.recordatorio ? `<span class="chip ok">${I("check", 12)}Enviado</span><button type="button" class="linkbtn xs" data-act="rec.desmarcar" data-v="${esc(a.id)}">Desmarcar</button>` : ""}
         <a class="btn xs ${a.recordatorio ? "" : "dark"}" href="${esc(EG.waLink(a.whatsapp, EG.msgRecordatorio(a, s, S.prod, S.citaLink(a))))}" target="_blank" rel="noopener" data-act="rec.enviado" data-v="${esc(a.id)}">${a.recordatorio ? "Reenviar" : "Enviar"}</a></div>`).join("")}</div>`
         : `<p class="empty">No hay citas para recordar.</p>`}
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Listo</button></div></div>`;
@@ -396,6 +396,11 @@
   };
   A["ag.close"] = () => { S.ui.open = null; S.ui.avisar = null; return "top"; };
   // Marca la cita como recordada (el link abre WhatsApp igual, porque no se cancela el click).
+  // Vuelve a dejar la cita como pendiente de recordatorio (por ejemplo, si se tocó "Enviar" sin mandarlo).
+  A["rec.desmarcar"] = (el) => {
+    const a = S.db.appts.find((x) => x.id === el.dataset.v);
+    if (a) { delete a.recordatorio; S.save(); }
+  };
   A["rec.enviado"] = (el) => {
     const a = S.db.appts.find((x) => x.id === el.dataset.v);
     if (a) { a.recordatorio = new Date().toISOString(); S.save(); }
