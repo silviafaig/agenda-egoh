@@ -25,7 +25,7 @@
   }
   function formProd(e) {
     const src = e.fotoNueva || (e.id ? EG.photoSrc(S.prod(e.id)) : "");
-    return `<form class="card stack" id="cat-form" novalidate><h3>${e.id ? "Editar prenda" : "Nueva prenda"}</h3>
+    return `<form class="card stack" id="cat-form" novalidate><div class="row between"><h3>${e.id ? "Editar prenda" : "Nueva prenda"}</h3><button class="btn sm" type="button" data-act="cat.cancelar">${I("x", 15)}Cancelar</button></div>
       <div class="fgrid two">
         <label class="f full" for="pf-nombre">Nombre<input class="t" id="pf-nombre" value="${esc(e.nombre)}" data-bind="editProd.nombre" placeholder="Ej: Bikini Cala Black" required></label>
         <label class="f" for="pf-cat">Categoría<select class="t" id="pf-cat" data-bind="editProd.categoria">${EG.CATEGORIAS.map((c) => `<option${e.categoria === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
@@ -120,6 +120,7 @@
   A["cat.nueva"] = () => {
     S.ui.formErr = "";
     S.ui.editProd = { id: null, nombre: "", categoria: S.ui.catPanel, precio: "", modelo: "", color: "", tallesTxt: S.ui.catPanel === "Bikinis SS27" ? EG.TALLES_BIKINI.join(", ") : "", fotoNueva: "" };
+    return "top";
   };
   A["cat.editar"] = (el) => {
     const p = S.prod(el.dataset.v);
