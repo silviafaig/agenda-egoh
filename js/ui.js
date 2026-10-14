@@ -33,7 +33,7 @@
 
   // Píldoras de categoría. `action` es el data-act que cambia el filtro.
   U.cats = (active, action) =>
-    `<div class="pills scroll" role="group" aria-label="Categoría" data-keepscroll="cats">${EG.CATEGORIAS.map(
+    `<div class="pills scroll" role="group" aria-label="Categoría" data-keepscroll="cats">${EG.cats(EG.S.db.settings).map(
       (c) => `<button type="button" class="pill" data-act="${action}" data-v="${esc(c)}" aria-pressed="${c === active}">${esc(c)}</button>`
     ).join("")}</div>`;
 

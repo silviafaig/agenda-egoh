@@ -119,6 +119,7 @@
     const pres = prox.filter((a) => a.tipo !== "video").length;
     return `${P.title(saludo, fechaHoy, `<button type="button" class="btn sm" data-act="nav" data-v="agenda">${I("calendar-days", 15)}Ver agenda</button>`)}
       <div class="stack lg">
+        ${primerosPasos()}
         <div class="stats"><div class="stat bordered"><b class="num">${deHoy.length}</b><span class="small muted">Citas de hoy</span></div>
           <div class="stat bordered"><b class="num">${deHoy.filter((a) => a.tipo === "video").length}</b><span class="small muted">Videollamadas</span></div>
           <div class="stat bordered"><b class="num">${deHoy.filter((a) => a.estado === "confirmada").reduce((n, a) => n + a.prendas.filter((i) => i.seLlevo == null).length, 0)}</b><span class="small muted">Prendas a preparar</span></div></div>
@@ -378,7 +379,30 @@
   const A = EG.actions;
   A.nav = (el) => { S.ui.open = null; S.ui.clienta = null; S.go(el.dataset.v || "inicio"); return false; };
   A.verPublica = () => { S.ui.fromPanel = true; S.go("reservar"); return false; };
-  A.copiarLink = () => { U.copyToast(S.publicLink(), "Link copiado."); return false; };
+  A.copiarLink = () => {
+    U.copyToast(S.publicLink(), "Link copiado.");
+    if (!S.db.settings.pasos || !S.db.settings.pasos.link) { S.db.settings.pasos = Object.assign({}, S.db.settings.pasos, { link: true }); S.save(); }
+    return false;
+  };
+  // Primeros pasos de un showroom nuevo (no se muestra en EGOH ni cuando ya se completaron o se ocultaron).
+  function primerosPasos() {
+    const s = S.db.settings, R = EG.remote;
+    if (!R.on || R.esPrincipal() || (s.pasos && s.pasos.oculto)) return "";
+    const ps = s.pasos || {};
+    const items = [
+      ["Completá tu perfil público", "Logo, dirección y WhatsApp.", !!(s.direccion && s.whatsappShowroom), "perfil"],
+      ["Revisá tus horarios", "Días, franjas y duración de las citas.", !!ps.horarios, "horarios"],
+      ["Cargá tu catálogo", "Tus prendas con fotos y talles.", S.db.products.length > 0, "catalogo"],
+      ["Elegí tu diseño", "Colores, tipografía y forma.", !!s.tema, "diseno"],
+      ["Compartí tu link", "Copialo y pasáselo a tus clientas.", !!ps.link, "compartir"]
+    ];
+    const hechos = items.filter((x) => x[2]).length;
+    return `<section class="card bordered stack"><div class="row between"><div><h2>Primeros pasos</h2><p class="small muted">${hechos} de ${items.length} listos</p></div>
+      <button type="button" class="linkbtn xs" data-act="pasos.ocultar">${hechos === items.length ? "Listo, ocultar" : "Ocultar"}</button></div>
+      <div class="stack sm">${items.map((x) => `<div class="row nowrap"><span style="width:22px;height:22px;flex:none;border-radius:50%;display:grid;place-items:center;${x[2] ? "background:var(--accent);color:var(--accent-ink)" : "border:1px solid var(--line)"}">${x[2] ? I("check", 13) : ""}</span>
+        <span class="grow"><span class="small b">${x[0]}</span><br><span class="xs muted">${x[1]}</span></span>${x[2] ? "" : `<button type="button" class="btn xs" data-act="nav" data-v="${x[3]}">Ir</button>`}</div>`).join("")}</div></section>`;
+  }
+  A["pasos.ocultar"] = () => { S.db.settings.pasos = Object.assign({}, S.db.settings.pasos, { oculto: true }); S.save(); };
   A.logout = () => {
     if (!EG.remote.on) { S.toast("En la versión de prueba no hay sesión."); return false; }
     EG.remote.logout().then(() => { S.go("inicio"); S.render(); });

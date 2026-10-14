@@ -37,9 +37,13 @@
     return ok;
   };
   // Links para compartir: la dirección definitiva (config.appUrl); en la computadora local, la dirección actual.
+  // EGOH (el showroom principal de config.js) usa su dominio; los demás, el link común con ?s=nombre.
   const base = () => {
     const c = window.EG_CONFIG || {};
-    return c.appUrl && !/^localhost|^127\./.test(location.hostname) && location.protocol !== "file:" ? c.appUrl.replace(/\/?$/, "/") : location.href.split("#")[0];
+    const local = /^localhost|^127\./.test(location.hostname) || location.protocol === "file:";
+    if (local || !R.on) return location.href.split("#")[0];
+    if (R.esPrincipal()) return c.appUrl ? c.appUrl.replace(/\/?$/, "/") : location.origin + "/";
+    return R.productoBase() + "?s=" + encodeURIComponent(R.slug);
   };
   S.publicLink = () => base() + "#/reservar";
   S.citaLink = (a) => base() + "#/cita/" + a.id + (a._token ? "." + a._token : "");
@@ -59,6 +63,7 @@
     const h = location.hash.replace(/^#\/?/, "").split("?")[0];
     const parts = h.split("/");
     if (parts[0] === "reservar") return "reservar";
+    if (parts[0] === "alta") return "alta";
     if (parts[0] === "cita") { const t = String(parts[1] || "").split("."); S.ui.citaId = t[0] || null; S.ui.citaToken = t[1] || ""; return "cita"; }
     return PANEL.indexOf(parts[0]) >= 0 ? parts[0] : "inicio";
   }
@@ -85,7 +90,8 @@
     if (!R.on) return;
     const pub = isPublic(S.ui.route);
     try {
-      if (pub) {
+      if (S.ui.route === "alta") { await R.session(); if (EG.altaPendiente) await EG.altaPendiente(); }
+      else if (pub) {
         if (!R.panel && !R.publicLoaded) { S.loading = true; S.render(); await R.loadPublic(); R.publicLoaded = true; }
       } else if (!R.panel) {
         S.loading = true; S.render();
@@ -126,9 +132,15 @@
     app.querySelectorAll("[data-keepscroll]").forEach((el) => { keep[el.dataset.keepscroll] = [el.scrollLeft, el.scrollTop]; });
     const pub = isPublic(S.ui.route);
     document.body.classList.toggle("is-public", pub);
-    if (!S.loading) EG.aplicarTema(EG.tema(S.db.settings));
+    if (!S.loading) {
+      EG.aplicarTema(EG.tema(S.db.settings));
+      const cats = EG.cats(S.db.settings);
+      if (cats.indexOf(S.ui.cat) < 0) S.ui.cat = cats[0];
+      if (cats.indexOf(S.ui.catPanel) < 0) S.ui.catPanel = cats[0];
+    }
     app.innerHTML = S.loading ? `<div class="splash" aria-busy="true"></div>`
       : R.on && R.error && !(pub && R.publicLoaded) ? `<main class="pubwrap narrow"><h1>No se pudo cargar</h1><p class="muted">${EG.esc(R.error)}</p><button type="button" class="btn dark" onclick="location.reload()">Reintentar</button></main>`
+      : S.ui.route === "alta" ? EG.views.alta()
       : pub ? EG.views.publico() : R.on && (!R.user || !R.panel || R.recovery) ? EG.views.auth() : EG.views.panel();
     app.querySelectorAll("[data-keepscroll]").forEach((el) => {
       const k = keep[el.dataset.keepscroll];

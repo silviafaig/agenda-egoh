@@ -28,7 +28,7 @@
     return `<form class="card stack" id="cat-form" novalidate><h3>${e.id ? "Editar prenda" : "Nueva prenda"}</h3>
       <div class="fgrid two">
         <label class="f full" for="pf-nombre">Nombre<input class="t" id="pf-nombre" value="${esc(e.nombre)}" data-bind="editProd.nombre" placeholder="Ej: Bikini Cala Black" required></label>
-        <label class="f" for="pf-cat">Categoría<select class="t" id="pf-cat" data-bind="editProd.categoria">${EG.CATEGORIAS.map((c) => `<option${e.categoria === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
+        <label class="f" for="pf-cat">Categoría<select class="t" id="pf-cat" data-bind="editProd.categoria">${EG.cats(S.db.settings).map((c) => `<option${e.categoria === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
         <label class="f" for="pf-precio">Precio mayorista<input class="t num" id="pf-precio" type="number" inputmode="numeric" min="0" step="100" value="${esc(e.precio)}" data-bind="editProd.precio" placeholder="Vacío o 0 = no se muestra"></label>
         <label class="f" for="pf-modelo">Modelo <span class="hint">para Métricas</span><input class="t" id="pf-modelo" value="${esc(e.modelo)}" data-bind="editProd.modelo" placeholder="Ej: Cala"></label>
         <label class="f" for="pf-color">Color<input class="t" id="pf-color" value="${esc(e.color)}" data-bind="editProd.color" placeholder="Ej: Black"></label>
@@ -44,10 +44,11 @@
     const lista = S.db.products.filter((p) => p.categoria === S.ui.catPanel);
     return `${P.title("Catálogo", "Las clientas eligen de acá su preselección al reservar.", `<label class="btn sm" style="cursor:pointer">${I("image-plus", 15)}${S.ui.busy ? "Cargando fotos…" : "Cargar fotos en masa"}
           <input class="sr-only" type="file" accept="image/*" multiple data-change="cat.masivo" ${S.ui.busy ? "disabled" : ""}></label>
+        <button type="button" class="btn sm" data-act="cats.abrir">${I("tag", 15)}Categorías</button>
         <button type="button" class="btn sm" data-act="precios.abrir">${I("pencil", 15)}Cambiar precios</button>
         <button type="button" class="btn sm dark" data-act="cat.nueva">${I("plus", 15)}Agregar prenda</button>`)}
       <div class="stack lg" data-fscope>
-        <p class="notice soft">Carga masiva: elegí varias fotos juntas y cada una se asigna a su prenda por el nombre del archivo, con el formato <b>Bikini_Modelo_Color_01.jpg</b> (por ejemplo <i>Bikini_Cala_Black_01.jpg</i>). Se usa la <b>_01</b>, salvo en Reversible Vela Malbec / Black, que usa la <b>_02</b>.</p>
+        ${EG.remote.on && !EG.remote.esPrincipal() ? `<p class="notice soft">Carga masiva: elegí varias fotos juntas y cada una se asigna a su prenda por el nombre del archivo: el nombre de la prenda con guiones bajos y <b>_01</b> al final (por ejemplo, para "Remera Lisa Negra": <i>Remera_Lisa_Negra_01.jpg</i>).</p>` : `<p class="notice soft">Carga masiva: elegí varias fotos juntas y cada una se asigna a su prenda por el nombre del archivo, con el formato <b>Bikini_Modelo_Color_01.jpg</b> (por ejemplo <i>Bikini_Cala_Black_01.jpg</i>). Se usa la <b>_01</b>, salvo en Reversible Vela Malbec / Black, que usa la <b>_02</b>.</p>`}
         ${fotoMsg()}<label class="searchbox">${I("search", 16)}<span class="sr-only">Buscar prenda</span><input class="t" type="search" placeholder="Buscar prenda por nombre" value="${esc(S.ui.catQ || "")}" data-bind="catQ" data-filter="[data-pcard]"></label>
         ${U.cats(S.ui.catPanel, "cat.filtro")}
         ${S.ui.editProd ? formProd(S.ui.editProd) : ""}
@@ -88,7 +89,7 @@
       <div class="mhead"><h2>Cambiar precios</h2><button type="button" class="iconbtn sm" data-act="mod.close" aria-label="Cerrar">${I("x", 15)}</button></div>
       <div class="fgrid two">
         <label class="f" for="pr-q">Nombre o modelo<input class="t" id="pr-q" type="search" placeholder="Ej: Cala (vacío = todas)" value="${esc(m.q)}" data-bind="modal.q" data-change="precios.ref"></label>
-        <label class="f" for="pr-cat">Categoría<select class="t" id="pr-cat" data-bind="modal.cat" data-change="precios.ref"><option value="">Todas</option>${EG.CATEGORIAS.map((c) => `<option${m.cat === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label></div>
+        <label class="f" for="pr-cat">Categoría<select class="t" id="pr-cat" data-bind="modal.cat" data-change="precios.ref"><option value="">Todas</option>${EG.cats(S.db.settings).map((c) => `<option${m.cat === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label></div>
       <div class="stack sm"><span class="label">Cambio</span><div class="seg" style="flex-wrap:wrap">${MODOS.map(([k, t]) => `<button type="button" data-act="mod.set" data-k="modo" data-v="${k}" aria-pressed="${m.modo === k}">${t}</button>`).join("")}</div>
         <label class="f" for="pr-v" style="max-width:220px"><span>${m.modo === "fijo" ? "Precio nuevo ($)" : m.modo === "monto" ? "Monto ($)" : "Porcentaje (%)"}</span><input class="t num" id="pr-v" type="number" inputmode="decimal" placeholder="${ph}" value="${esc(m.valor)}" data-bind="modal.valor" data-change="precios.ref"></label>
         ${m.modo !== "fijo" ? `<p class="xs muted">Las prendas sin precio no cambian.</p>` : ""}</div>
@@ -102,6 +103,39 @@
       <p class="xs muted">Escribí y tocá Enter (o salí del campo) para ver la vista previa.</p>
       <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Cancelar</button>
         <button type="button" class="btn dark" data-act="precios.aplicar" ${cambios.length ? "" : "disabled"}>Aplicar a ${U.plural(cambios.length, "prenda")}</button></div></div>`;
+  };
+  /* ---------- Categorías del catálogo ---------- */
+  P.MODALES.categorias = (m) => {
+    const cuenta = (orig) => (orig ? S.db.products.filter((p) => p.categoria === orig).length : 0);
+    return `<div class="modal" role="dialog" aria-modal="true" aria-label="Categorías"><div class="grab"></div>
+      <div class="mhead"><h2>Categorías</h2><button type="button" class="iconbtn sm" data-act="mod.close" aria-label="Cerrar">${I("x", 15)}</button></div>
+      <p class="small muted">Es el orden en que las ven las clientas. Si cambiás un nombre, las prendas de esa categoría se pasan solas.</p>
+      <div class="stack sm">${m.lista.map((c, i) => { const n = cuenta(c.orig); return `<div class="row nowrap">
+        <input class="t" value="${esc(c.nombre)}" data-bind="modal.lista.${i}.nombre" aria-label="Categoría ${i + 1}" maxlength="40">
+        <span class="xs muted" style="white-space:nowrap">${U.plural(n, "prenda")}</span>
+        <button type="button" class="iconbtn sm" data-act="cats.subir" data-v="${i}" aria-label="Subir" ${i ? "" : "disabled"}>${I("chevron-up", 14)}</button>
+        <button type="button" class="iconbtn sm" data-act="cats.quitar" data-v="${i}" aria-label="Quitar" ${n || m.lista.length < 2 ? "disabled" : ""} title="${n ? "Tiene prendas: pasalas a otra categoría antes de quitarla" : ""}">${I("x", 14)}</button></div>`; }).join("")}</div>
+      <button type="button" class="btn sm" style="align-self:flex-start" data-act="cats.agregar">${I("plus", 15)}Agregar categoría</button>
+      ${m.err ? `<p class="err" role="alert">${esc(m.err)}</p>` : ""}
+      <p class="xs muted">Para quitar una categoría que tiene prendas, primero pasá esas prendas a otra (Editar prenda → Categoría).</p>
+      <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="mod.close">Cancelar</button><button type="button" class="btn dark" data-act="cats.guardar">Guardar</button></div></div>`;
+  };
+  A["cats.abrir"] = () => { S.ui.modal = { kind: "categorias", err: "", lista: EG.cats(S.db.settings).map((c) => ({ orig: c, nombre: c })) }; };
+  A["cats.agregar"] = () => { S.ui.modal.lista.push({ orig: null, nombre: "" }); };
+  A["cats.quitar"] = (el) => { S.ui.modal.lista.splice(+el.dataset.v, 1); };
+  A["cats.subir"] = (el) => { const l = S.ui.modal.lista, i = +el.dataset.v; if (i > 0) l.splice(i - 1, 0, l.splice(i, 1)[0]); };
+  A["cats.guardar"] = () => {
+    const m = S.ui.modal;
+    const lista = m.lista.map((c) => ({ orig: c.orig, nombre: c.nombre.trim() })).filter((c) => c.nombre || c.orig);
+    if (lista.some((c) => !c.nombre)) { m.err = "Escribí un nombre para cada categoría."; return; }
+    const nombres = lista.map((c) => c.nombre);
+    if (new Set(nombres.map((n) => n.toLowerCase())).size !== nombres.length) { m.err = "Hay dos categorías con el mismo nombre."; return; }
+    if (!nombres.length) { m.err = "Dejá al menos una categoría."; return; }
+    lista.forEach((c) => { if (c.orig && c.orig !== c.nombre) S.db.products.forEach((p) => { if (p.categoria === c.orig) p.categoria = c.nombre; }); });
+    S.db.settings.categorias = nombres;
+    S.save();
+    S.ui.modal = null;
+    S.toast("Categorías guardadas.");
   };
   A["precios.abrir"] = () => { S.ui.modal = { kind: "precios", q: "", cat: S.ui.catPanel, modo: "subir", valor: "", fuera: {} }; };
   EG.changes["precios.ref"] = () => true;
@@ -369,6 +403,7 @@
     const ent = (v) => Math.max(0, Math.round(Number(v) || 0));
     Object.assign(S.db.settings, { dias: d.dias.slice().sort(), franjas, duracion, aceptaReservas: !!d.acepta,
       anticipacionMinHoras: ent(d.minH), anticipacionMaxDias: ent(d.maxD), cambiosMinHoras: ent(d.cambH), maxReprogramaciones: ent(d.maxR) });
+    S.db.settings.pasos = Object.assign({}, S.db.settings.pasos, { horarios: true });
     S.save();
     S.ui.draft = null;
     S.ui.draftErr = "";

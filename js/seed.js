@@ -44,6 +44,24 @@
     };
   };
 
+  // Valores de arranque para un showroom nuevo (alta): genéricos, sin datos de EGOH.
+  EG.settingsBase = function () {
+    return {
+      nombre: "", direccion: "", info: "Las visitas son únicamente con cita previa. Elegí antes las prendas que querés ver así las tenemos listas.",
+      dias: [1, 2, 3, 4, 5], franjas: [["10:00", "13:00"], ["14:00", "18:00"]], duracion: 30,
+      compraMinima: 0, compraMinimaNota: "", feriados: [], fechasEspeciales: [],
+      opcionesComoCompra: ["1ra compra", "Emprendimiento", "Revendedora", "Comercio", "Uso personal"],
+      saludoNombre: "", aceptaReservas: true, anticipacionMinHoras: 24, anticipacionMaxDias: 30, cambiosMinHoras: 24, maxReprogramaciones: 0,
+      whatsappShowroom: "", instagram: "", logo: "", portada: "", mostrarPrecios: true,
+      categorias: ["Colección actual"]
+    };
+  };
+  // Categorías del catálogo: las del showroom (Catálogo → Categorías) o, si nunca se editaron, las de EGOH.
+  EG.cats = function (settings) {
+    var c = settings && settings.categorias;
+    return Array.isArray(c) && c.length ? c : EG.CATEGORIAS;
+  };
+
   EG.seedProducts = function () {
     var out = [];
     BIKINIS_SS27.forEach(function (m) {

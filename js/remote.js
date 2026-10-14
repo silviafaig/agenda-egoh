@@ -13,6 +13,9 @@
   }));
   R.slug = (new URLSearchParams(location.search).get("s") || cfg.showroom || "").toLowerCase();
 
+  // ¿Es el showroom de config.js (EGOH)? Solo ese usa su dominio, sus mails y sus valores por defecto.
+  R.esPrincipal = () => !cfg.showroom || R.slug === String(cfg.showroom).toLowerCase();
+
   const snap = { citas: new Map(), clientas: new Map(), bloqueos: new Map(), productos: new Map(), config: "" };
   const S = () => EG.S;
 
@@ -43,7 +46,7 @@
     R.showroom = data;
     const pr = await sb.from("productos").select("id, orden, data").eq("showroom_id", data.id).order("orden");
     if (pr.error) throw new Error(pr.error.message);
-    return { v: 2, settings: Object.assign(EG.defaultSettings(), data.config), products: pr.data.map((r) => r.data), appts: [], clientas: [], bloqueos: [] };
+    return { v: 2, settings: Object.assign(R.esPrincipal() ? EG.defaultSettings() : EG.settingsBase(), data.config), products: pr.data.map((r) => r.data), appts: [], clientas: [], bloqueos: [] };
   }
 
   // Vista pública: solo horarios ocupados, sin datos de otras clientas.
@@ -165,11 +168,33 @@
   R.reprogramarCita = async (id, token, fecha, hora) => (await sb.rpc("reprogramar_cita", { p_id: id, p_token: token, p_fecha: fecha, p_hora: hora })).data;
 
   /* ---------- mails (Apps Script) ---------- */
-  R.mails = !!cfg.avisosUrl;
+  // Los mails (Apps Script de EGOH) son solo para EGOH hasta tener mails centralizados.
+  Object.defineProperty(R, "mails", { get: () => !!cfg.avisosUrl && R.esPrincipal() });
   R.notify = function (tipo, id, token) {
-    if (!cfg.avisosUrl || !id || !token) return;
+    if (!R.mails || !id || !token) return;
     // no-cors: el navegador no espera la respuesta; el script valida id + token antes de mandar nada.
     fetch(cfg.avisosUrl, { method: "POST", mode: "no-cors", body: JSON.stringify({ tipo, id, token }) }).catch(() => {});
+  };
+
+  /* ---------- alta de showrooms (con código de invitación) ---------- */
+  // Dirección común del producto: en *.pages.dev (incluida etapa2) la actual; si no, la de Cloudflare.
+  R.productoBase = () => (/\.pages\.dev$|^localhost$|^127\./.test(location.hostname) ? location.origin : (cfg.productoUrl || "https://agenda-showroom.pages.dev").replace(/\/$/, "")) + "/";
+  R.slugDisponible = async (slug) => {
+    const { data, error } = await sb.rpc("slug_disponible", { p_slug: slug });
+    if (error) throw new Error(error.message);
+    return !!data;
+  };
+  R.registrar = async (email, password, redirectTo) => {
+    const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
+    if (error) throw error;
+    if (data.session) R.user = data.session.user;
+    // Supabase no avisa si el email ya existía: lo reconocemos porque vuelve sin identidades.
+    return { sesion: !!data.session, yaExistia: !!(data.user && Array.isArray(data.user.identities) && !data.user.identities.length) };
+  };
+  R.crearShowroom = async (codigo, slug, nombre, yo) => {
+    const { data, error } = await sb.rpc("crear_showroom", { p_codigo: codigo, p_slug: slug, p_nombre: nombre, p_tu_nombre: yo });
+    if (error) throw new Error(error.message);
+    return data;
   };
 
   /* ---------- sesión ---------- */
