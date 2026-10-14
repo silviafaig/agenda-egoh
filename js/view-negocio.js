@@ -253,7 +253,7 @@
     const s = S.db.settings;
     const logo = EG.imgSrc(s.logo, "logo");
     const p = S.db.products.find((x) => EG.photoSrc(x)) || S.db.products[0];
-    return `<div class="card bordered" style="background:#fff;padding:16px;${esc(EG.temaStyle(t))};font-family:var(--font)" aria-label="Vista previa">
+    return `<div class="card bordered" style="background:#fff;padding:16px;${esc(EG.temaStyle(t))};font-family:var(--font);color:var(--ink)" aria-label="Vista previa">
       <div class="stack" style="pointer-events:none">
         <div class="row between">${logo ? `<img src="${esc(logo)}" alt="" style="height:30px;object-fit:contain">` : `<span class="logo" style="font-size:22px">${esc(String(s.nombre || "").toLowerCase())}.</span>`}<span class="xs muted">Paso 2 de 5</span></div>
         <h2 style="font-family:var(--font)">Elegí día y horario</h2>
@@ -274,9 +274,9 @@
       <span class="xs muted">${ayuda}</span></span></label>`;
     return `${P.title("Diseño de marca", "Elegí los colores, la tipografía y la forma de tu agenda. Se aplican a la página de reserva y al panel.", `<button type="button" class="btn sm" data-act="dis.reset">Volver al diseño original</button><button type="submit" form="dis-form" class="btn sm dark">Guardar cambios</button>`)}
       <form class="cols" id="dis-form" novalidate><div class="stack lg">
-        ${sec("Colores", "Tocá una combinación sugerida o elegí cada color; después podés retocar cualquiera.", `<div class="stack sm"><span class="label">Combinaciones sugeridas</span><div class="row">${EG.PALETAS.map((pa, i) => `<button type="button" class="pill" data-act="dis.paleta" data-v="${i}" aria-pressed="${t.acento === pa.acento && t.boton === pa.boton && t.tarjeta === pa.tarjeta}" style="display:inline-flex;gap:6px;align-items:center">
+        ${sec("Colores", "Tocá una combinación sugerida o elegí cada color; después podés retocar cualquiera.", `<div class="stack sm"><span class="label">Combinaciones sugeridas</span><div class="row">${EG.PALETAS.map((pa, i) => `<button type="button" class="pill" data-act="dis.paleta" data-v="${i}" aria-pressed="${t.acento === pa.acento && t.boton === pa.boton && t.tarjeta === pa.tarjeta && t.texto === pa.texto}" style="display:inline-flex;gap:6px;align-items:center">
           <span style="display:inline-flex">${[pa.acento, pa.boton, pa.tarjeta].map((c) => `<span style="width:14px;height:14px;border-radius:50%;background:${c};border:1px solid rgba(0,0,0,.12);margin-right:-3px"></span>`).join("")}</span><span style="margin-left:4px">${esc(pa.nombre)}</span></button>`).join("")}</div></div>
-          <div class="fgrid two">${color("acento", "Color de marca", "Día, horario y talle elegidos")}${color("boton", "Botones", "Botón principal")}${color("tarjeta", "Fondo de tarjetas", "Recuadros y secciones")}</div>`)}
+          <div class="fgrid two">${color("acento", "Color de marca", "Día, horario y talle elegidos")}${color("boton", "Botones", "Botón principal")}${color("tarjeta", "Fondo de tarjetas", "Recuadros y secciones")}${color("texto", "Texto", "Títulos y textos")}</div>`)}
         ${sec("Tipografía", "Pares de fuentes que combinan: una para los textos y otra para títulos y nombre.", `<div class="fgrid two">${EG.FUENTES.map((f) => `<button type="button" class="opt" data-act="dis.fuente" data-v="${f.id}" aria-pressed="${t.fuente === f.id}" style="text-align:left">
           <span class="stack sm" style="gap:2px"><span style="font-family:'${f.titulo}',serif;font-size:20px;line-height:1.1">${esc(f.nombre)}</span><span style="font-family:'${f.texto}',sans-serif;font-size:13px">${esc(f.texto)}${f.titulo !== f.texto ? " + " + esc(f.titulo) : ""}</span></span></button>`).join("")}</div>`)}
         ${sec("Forma", "Cómo se ven los botones y las tarjetas.", `<div class="seg" style="align-self:flex-start">${EG.FORMAS.map((fo) => `<button type="button" data-act="dis.forma" data-v="${fo.id}" aria-pressed="${t.forma === fo.id}">${esc(fo.nombre)}</button>`).join("")}</div>`)}
@@ -284,7 +284,7 @@
       </div><div class="stack"><h3>Vista previa</h3>${vistaPrevia(t)}<p class="xs muted">Así se ve la página de reserva. Los cambios se aplican al guardar.</p></div></form>`;
   };
   EG.changes["dis.color"] = (el) => { if (/^#[0-9a-f]{6}$/i.test(el.value)) S.ui.draft.tema[el.dataset.k] = el.value.toLowerCase(); };
-  A["dis.paleta"] = (el) => { const pa = EG.PALETAS[+el.dataset.v]; Object.assign(S.ui.draft.tema, { acento: pa.acento, boton: pa.boton, tarjeta: pa.tarjeta }); };
+  A["dis.paleta"] = (el) => { const pa = EG.PALETAS[+el.dataset.v]; Object.assign(S.ui.draft.tema, { acento: pa.acento, boton: pa.boton, tarjeta: pa.tarjeta, texto: pa.texto }); };
   A["dis.fuente"] = (el) => { S.ui.draft.tema.fuente = el.dataset.v; };
   A["dis.forma"] = (el) => { S.ui.draft.tema.forma = el.dataset.v; };
   A["dis.reset"] = () => { S.ui.draft.tema = Object.assign({}, EG.TEMA_DEF); };

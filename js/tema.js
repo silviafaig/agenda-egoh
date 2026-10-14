@@ -19,18 +19,18 @@
   ];
   // Paletas listas para elegir con un toque (color de marca, botones, fondo de tarjetas).
   EG.PALETAS = [
-    { nombre: "Bordó", acento: "#963b56", boton: "#1e1e1e", tarjeta: "#f5f3f0" },
-    { nombre: "Terracota", acento: "#b5523b", boton: "#2b2622", tarjeta: "#f6f1ec" },
-    { nombre: "Oliva", acento: "#5f6b3a", boton: "#1f2418", tarjeta: "#f2f2ea" },
-    { nombre: "Azul noche", acento: "#2f4a7a", boton: "#16213a", tarjeta: "#eef1f6" },
-    { nombre: "Rosa", acento: "#c2577f", boton: "#3a2230", tarjeta: "#f8eff3" },
-    { nombre: "Negro", acento: "#1e1e1e", boton: "#1e1e1e", tarjeta: "#f3f3f3" }
+    { nombre: "Bordó", acento: "#963b56", boton: "#1e1e1e", tarjeta: "#f5f3f0", texto: "#1e1e1e" },
+    { nombre: "Terracota", acento: "#b5523b", boton: "#2b2622", tarjeta: "#f6f1ec", texto: "#2b2622" },
+    { nombre: "Oliva", acento: "#5f6b3a", boton: "#1f2418", tarjeta: "#f2f2ea", texto: "#1f2418" },
+    { nombre: "Azul noche", acento: "#2f4a7a", boton: "#16213a", tarjeta: "#eef1f6", texto: "#16213a" },
+    { nombre: "Rosa", acento: "#c2577f", boton: "#3a2230", tarjeta: "#f8eff3", texto: "#3a2230" },
+    { nombre: "Negro", acento: "#1e1e1e", boton: "#1e1e1e", tarjeta: "#f3f3f3", texto: "#111111" }
   ];
-  EG.TEMA_DEF = { acento: "#963b56", boton: "#1e1e1e", tarjeta: "#f5f3f0", fuente: "clasica", forma: "redondeada" };
+  EG.TEMA_DEF = { acento: "#963b56", boton: "#1e1e1e", tarjeta: "#f5f3f0", texto: "#1e1e1e", fuente: "clasica", forma: "redondeada" };
 
   EG.tema = function (s) {
     var t = Object.assign({}, EG.TEMA_DEF, (s && s.tema) || {});
-    ["acento", "boton", "tarjeta"].forEach(function (k) { if (!/^#[0-9a-f]{6}$/i.test(t[k])) t[k] = EG.TEMA_DEF[k]; });
+    ["acento", "boton", "tarjeta", "texto"].forEach(function (k) { if (!/^#[0-9a-f]{6}$/i.test(t[k])) t[k] = EG.TEMA_DEF[k]; });
     if (!EG.FUENTES.some(function (f) { return f.id === t.fuente; })) t.fuente = EG.TEMA_DEF.fuente;
     if (!EG.FORMAS.some(function (f) { return f.id === t.forma; })) t.forma = EG.TEMA_DEF.forma;
     return t;
@@ -55,6 +55,7 @@
     return {
       "--accent": t.acento, "--accent-soft": mezclar(t.acento, "#ffffff", 0.9), "--accent-ink": EG.tintaSobre(t.acento),
       "--btn": t.boton, "--btn-ink": EG.tintaSobre(t.boton),
+      "--ink": t.texto, "--muted": mezclar(t.texto, "#ffffff", 0.35),
       "--card": t.tarjeta, "--img": mezclar(t.tarjeta, "#1e1e1e", 0.05), "--line": mezclar(t.tarjeta, "#1e1e1e", 0.1),
       "--font": '"' + f.texto + '", system-ui, -apple-system, "Segoe UI", sans-serif',
       "--serif": '"' + f.titulo + '", Georgia, "Times New Roman", serif',
@@ -66,6 +67,7 @@
     var av = [];
     if (EG.contraste(t.acento, "#ffffff") < 3 && EG.contraste(t.acento, "#1e1e1e") < 3) av.push("El color de marca tiene poco contraste: los horarios y talles elegidos se pueden leer mal.");
     if (EG.contraste(t.boton, "#ffffff") < 3 && EG.contraste(t.boton, "#1e1e1e") < 3) av.push("El color de los botones tiene poco contraste con su texto.");
+    if (EG.contraste(t.texto, "#ffffff") < 4.5) av.push("El color del texto es muy claro: cuesta leerlo sobre el fondo blanco.");
     if (EG.contraste(t.tarjeta, "#1e1e1e") < 7) av.push("El fondo de las tarjetas es oscuro: conviene un tono claro para que el texto se lea bien.");
     return av;
   };
