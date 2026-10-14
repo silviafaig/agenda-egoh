@@ -48,6 +48,7 @@
     perfil: "Mi negocio", horarios: "Mi negocio", reglas: "Mi negocio", compartir: "Mi negocio", integraciones: "Mi negocio",
     configuracion: "Cuenta", ayuda: "Cuenta", mas: "Menú" };
   P.title = (titulo, sub, acciones) =>
+    (BOTTOM.some((b) => b[0] === S.ui.route) ? "" : `<button type="button" class="back only-mob" style="margin-bottom:6px" data-act="nav" data-v="mas">${I("arrow-left", 16)}Volver al menú</button>`) +
     `<div class="ptitle"><div><span class="label">${EYEBROW[S.ui.route] || ""}</span><h1>${titulo}</h1>${sub ? `<p class="sub">${sub}</p>` : ""}</div>${acciones ? `<div class="row">${acciones}</div>` : ""}</div>`;
 
   /* ---------- recordatorios: citas del próximo día de atención ---------- */
