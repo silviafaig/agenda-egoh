@@ -18,7 +18,7 @@
   /* ---------- menú ---------- */
   const MENU = [
     ["General", [["inicio", "house", "Inicio"], ["agenda", "calendar-days", "Agenda"], ["clientas", "users", "Clientas"], ["metricas", "chart-column", "Métricas"], ["catalogo", "shirt", "Catálogo"]]],
-    ["Mi negocio", [["perfil", "store", "Perfil público"], ["horarios", "clock", "Horarios y disponibilidad"], ["reglas", "scroll-text", "Reglas de compra"], ["compartir", "share-2", "Compartir"], ["integraciones", "plug", "Integraciones"]]],
+    ["Mi negocio", [["perfil", "store", "Perfil público"], ["diseno", "palette", "Diseño de marca"], ["horarios", "clock", "Horarios y disponibilidad"], ["reglas", "scroll-text", "Reglas de compra"], ["compartir", "share-2", "Compartir"], ["integraciones", "plug", "Integraciones"]]],
     ["Cuenta", [["configuracion", "settings", "Configuración"], ["ayuda", "circle-help", "Ayuda"]]]
   ];
   const BOTTOM = [["inicio", "house", "Inicio"], ["agenda", "calendar-days", "Agenda"], ["clientas", "users", "Clientas"], ["mas", "ellipsis", "Más"]];
@@ -45,7 +45,7 @@
 
   // Etiqueta chica arriba del título, como en Figma.
   const EYEBROW = { inicio: "Inicio", agenda: "Agenda", clientas: "Clientas", metricas: "Métricas", catalogo: "Catálogo",
-    perfil: "Mi negocio", horarios: "Mi negocio", reglas: "Mi negocio", compartir: "Mi negocio", integraciones: "Mi negocio",
+    perfil: "Mi negocio", diseno: "Mi negocio", horarios: "Mi negocio", reglas: "Mi negocio", compartir: "Mi negocio", integraciones: "Mi negocio",
     configuracion: "Cuenta", ayuda: "Cuenta", mas: "Menú" };
   P.title = (titulo, sub, acciones) =>
     `<div class="ptitle"><div><span class="label">${EYEBROW[S.ui.route] || ""}</span><h1>${titulo}</h1>${sub ? `<p class="sub">${sub}</p>` : ""}</div>${acciones ? `<div class="row">${acciones}</div>` : ""}</div>`;
