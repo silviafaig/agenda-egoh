@@ -240,20 +240,23 @@
   function imgPicker(label, key, act, w) {
     const d = S.ui.draft;
     const src = d[key + "Nuevo"] || (!d[key + "Quitar"] ? EG.imgSrc(S.db.settings[key], key) : "");
-    return `<div class="f"><span>${label}</span><div class="row">${src ? `<img src="${esc(src)}" alt="" style="width:${w}px;max-height:90px;object-fit:${key === "logo" ? "contain" : "cover"};border-radius:12px;background:var(--bg);border:1px solid var(--line)">` : ""}
+    return `<div class="f"><span>${label}</span><div class="row">${src ? `<img src="${esc(src)}" alt="${esc(label + " actual")}" style="width:${w}px;max-height:90px;object-fit:${key === "logo" ? "contain" : "cover"};border-radius:12px;background:var(--bg);border:1px solid var(--line)">` : ""}
       <label class="btn sm" style="cursor:pointer">${I("image-plus", 15)}${src ? "Cambiar" : "Subir imagen"}<input class="sr-only" type="file" accept="image/*" data-change="${act}"></label>
       ${src ? `<button type="button" class="btn sm light" data-act="perfil.quitar" data-v="${key}">Quitar</button>` : ""}</div></div>`;
   }
   P.VISTAS.perfil = () => {
     const s = S.db.settings;
-    if (!S.ui.draft) S.ui.draft = { nombre: s.nombre, direccion: s.direccion, info: s.info, whatsappShowroom: s.whatsappShowroom ? "+" + s.whatsappShowroom : "", instagram: s.instagram ? "@" + s.instagram : "" };
+    if (!S.ui.draft) S.ui.draft = { nombre: s.nombre, direccion: s.direccion, info: s.info, whatsappShowroom: s.whatsappShowroom ? "+" + s.whatsappShowroom : "", instagram: s.instagram ? "@" + s.instagram : "",
+      legalTitular: (s.legal && s.legal.titular) || "", legalCuit: (s.legal && s.legal.cuit) || "", legalEmail: (s.legal && s.legal.email) || "" };
     const d = S.ui.draft;
     return `${P.title("Perfil público", "Lo que ven las clientas al reservar.", `<button type="button" class="btn sm" data-act="verPublica">${I("external-link", 15)}Ver como clienta</button><button type="submit" form="perfil-form" class="btn sm dark">Guardar cambios</button>`)}
       ${wrap(`${errHtml()}<form class="stack lg" id="perfil-form" novalidate>
         ${sec("Imagen", "Si no subís un logo, se muestra el nombre en letra serif (“" + esc(String(s.nombre).toLowerCase()) + ".”).", imgPicker("Logo", "logo", "perfil.logo", 120) + imgPicker("Portada", "portada", "perfil.portada", 220))}
         ${sec("Datos del showroom", "", `${fld("pp-nombre", "Nombre del showroom", "nombre")}${fld("pp-dir", "Dirección", "direccion")}
           <label class="f" for="pp-info">Texto informativo<textarea class="t" id="pp-info" data-bind="draft.info">${esc(d.info)}</textarea></label>`)}
-        ${sec("Contacto", "Aparecen como botones en tu página de reservas. Dejalos vacíos para no mostrarlos.", `${fld("pp-wa", "WhatsApp del showroom", "whatsappShowroom", "tel", 'inputmode="tel" placeholder="11 5555 0101"')}${fld("pp-ig", "Instagram", "instagram", "text", 'placeholder="@tumarca"')}`)}</form>`)}`;
+        ${sec("Contacto", "Aparecen como botones en tu página de reservas. Dejalos vacíos para no mostrarlos.", `${fld("pp-wa", "WhatsApp del showroom", "whatsappShowroom", "tel", 'inputmode="tel" placeholder="11 5555 0101"')}${fld("pp-ig", "Instagram", "instagram", "text", 'placeholder="@tumarca"')}`)}
+        ${sec("Datos legales", `Aparecen en el pie de tu página de reservas y en tus páginas de ${EG.legalLink("privacidad", "privacidad")}, ${EG.legalLink("terminos", "términos")}, ${EG.legalLink("cookies", "cookies")} y ${EG.legalLink("reembolsos", "reembolsos")}. Las clientas los usan para pedir ver, corregir o borrar sus datos (Ley 25.326).`,
+          `${fld("pp-titular", "Razón social o nombre del titular", "legalTitular", "text", 'placeholder="Como figura en ARCA" maxlength="80"')}${fld("pp-cuit", "CUIT", "legalCuit", "text", 'inputmode="numeric" placeholder="20-12345678-9" maxlength="13"')}${fld("pp-lemail", "Email para consultas sobre datos personales", "legalEmail", "email", 'inputmode="email" placeholder="hola@tumarca.com"')}`)}</form>`)}`;
   };
   const leerImg = (key, maxW) => (input) => {
     const f = input.files[0];
@@ -275,7 +278,11 @@
           .catch((e) => S.toast("La imagen no se pudo guardar" + (e && e.message ? ": " + e.message : ".")));
       } else if (d[k + "Quitar"]) { if (s[k] === "local") EG.store.fotoDel(k); s[k] = ""; }
     }
-    Object.assign(s, { nombre: d.nombre.trim(), direccion: d.direccion.trim(), info: d.info.trim(), whatsappShowroom: wa, instagram: EG.igUser(d.instagram) });
+    const cuit = String(d.legalCuit || "").replace(/\D/g, "");
+    if (cuit && cuit.length !== 11) { S.ui.draftErr = "Revisá el CUIT: tiene 11 números."; return; }
+    if (String(d.legalEmail || "").trim() && !/^\S+@\S+\.\S+$/.test(d.legalEmail.trim())) { S.ui.draftErr = "Revisá el email de datos legales."; return; }
+    Object.assign(s, { nombre: d.nombre.trim(), direccion: d.direccion.trim(), info: d.info.trim(), whatsappShowroom: wa, instagram: EG.igUser(d.instagram),
+      legal: { titular: String(d.legalTitular || "").trim(), cuit: cuit ? cuit.slice(0, 2) + "-" + cuit.slice(2, 10) + "-" + cuit.slice(10) : "", email: String(d.legalEmail || "").trim() } });
     S.save();
     S.ui.draft = null;
     S.ui.draftErr = "";
@@ -290,13 +297,13 @@
     const p = S.db.products.find((x) => EG.photoSrc(x)) || S.db.products[0];
     return `<div class="card bordered" style="background:#fff;padding:16px;${esc(EG.temaStyle(t))};font-family:var(--font);color:var(--ink)" aria-label="Vista previa">
       <div class="stack" style="pointer-events:none">
-        <div class="row between">${logo ? `<img src="${esc(logo)}" alt="" style="height:30px;object-fit:contain">` : `<span class="logo" style="font-size:22px">${esc(String(s.nombre || "").toLowerCase())}.</span>`}<span class="xs muted">Paso 2 de 5</span></div>
+        <div class="row between">${logo ? `<img src="${esc(logo)}" alt="${esc(s.nombre)}" style="height:30px;object-fit:contain">` : `<span class="logo" style="font-size:22px">${esc(String(s.nombre || "").toLowerCase())}.</span>`}<span class="xs muted">Paso 2 de 5</span></div>
         <h2 style="font-family:var(--font)">Elegí día y horario</h2>
         <div class="days">${[["Mar", 14], ["Mié", 15], ["Jue", 16]].map((d, i) => `<button type="button" class="day" aria-pressed="${i === 1}"><span>${d[0]}</span><b>${d[1]}</b><span>oct</span></button>`).join("")}</div>
         <div class="slots" style="grid-template-columns:repeat(3,1fr)">${["11:30", "12:00", "12:30"].map((h, i) => `<button type="button" class="slot num" aria-pressed="${i === 0}">${h}</button>`).join("")}</div>
         ${p ? `<div class="row nowrap" style="background:var(--card);padding:10px;border-radius:calc(14px * var(--rk))"><span style="width:56px;height:56px;flex:none;border-radius:calc(10px * var(--rk));overflow:hidden;background:var(--img)">${U.photo(p)}</span>
           <div class="stack sm"><span class="small">${esc(p.nombre)}</span><div class="sizes">${p.talles.slice(0, 4).map((z, i) => `<button type="button" class="size" aria-pressed="${i === 1}">${esc(z)}</button>`).join("")}</div></div></div>` : ""}
-        <div class="row"><span class="pill" aria-pressed="true">Revendedora</span><span class="pill">Comercio</span></div>
+        <div class="row"><span class="pill sel">Revendedora</span><span class="pill">Comercio</span></div>
         <button type="button" class="btn dark block">Confirmar cita</button>
       </div></div>`;
   }
@@ -534,7 +541,9 @@
     ["¿Cómo bloqueo un horario o un día?", "En Agenda, “Bloquear horario”. Para feriados o vacaciones usá Horarios y disponibilidad."],
     ["¿Cómo funciona la videollamada?", "A la hora de la cita llamás a la clienta por videollamada de WhatsApp. En el detalle de la cita, “Videollamada por WhatsApp” te abre el chat con ella: ahí tocás el ícono de la cámara."],
     ["¿Cómo cargo las fotos de las prendas?", "En Catálogo, “Cargar fotos en masa”: elegís todas juntas y cada una se asigna por el nombre del archivo."],
-    ["¿Por qué no me llegan las reservas de otras personas?", "En esta primera etapa los datos se guardan en este navegador. En la etapa 2 se conecta la base de datos y las reservas llegan desde cualquier celular."]
+    EG.remote.on
+      ? ["Una clienta me pidió borrar sus datos, ¿qué hago?", "En Clientas, abrí su ficha y tocá “Borrar datos de la clienta”. Se borran sus datos de contacto y notas, y sus citas pasadas quedan sin nombre (para no perder tus estadísticas). La ley pide hacerlo dentro de los 5 días hábiles."]
+      : ["¿Por qué no me llegan las reservas de otras personas?", "En esta versión de prueba los datos se guardan en este navegador. En la versión conectada a la nube las reservas llegan desde cualquier celular."]
   ];
   P.VISTAS.ayuda = () => `${P.title("Ayuda")}${wrap(`<div class="rows">${FAQ.map((f) => `<details class="tree" style="padding:0 14px"><summary style="grid-template-columns:1fr"><span class="nm b">${esc(f[0])}</span></summary><p class="small muted" style="padding:0 0 14px 16px">${esc(f[1])}</p></details>`).join("")}</div>
       <section class="card stack"><h3>¿Necesitás algo más?</h3><a class="btn sm dark" style="align-self:flex-start" href="${esc(EG.waLink(EG.SOPORTE_WA, "Hola, tengo una consulta sobre la Agenda Showroom"))}" target="_blank" rel="noopener">${I("message-circle", 15)}Escribinos por WhatsApp</a></section>`)}`;

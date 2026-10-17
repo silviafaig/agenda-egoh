@@ -84,7 +84,7 @@
   const { esc, icon: I } = EG;
   const A = EG.actions;
   const PEND = "eg-alta-pendiente";
-  S.ui.alta = { codigo: "", nombre: "", slug: "", slugTocado: false, yo: "", email: "", clave: "", modo: "nueva", slugOk: null, err: "", ok: "", esperando: false, busy: false };
+  S.ui.alta = { codigo: "", nombre: "", slug: "", slugTocado: false, yo: "", email: "", clave: "", acepto: false, modo: "nueva", slugOk: null, err: "", ok: "", esperando: false, busy: false };
 
   const leerPend = () => { try { return JSON.parse(localStorage.getItem(PEND) || "null"); } catch (e) { return null; } };
   const guardarPend = (p) => { try { p ? localStorage.setItem(PEND, JSON.stringify(p)) : localStorage.removeItem(PEND); } catch (e) { /* sin storage */ } };
@@ -97,7 +97,7 @@
     if (!p || !R.user) return;
     const a = S.ui.alta;
     try {
-      const r = await R.crearShowroom(p.codigo, p.slug, p.nombre, p.yo);
+      const r = await R.crearShowroom(p.codigo, p.slug, p.nombre, p.yo, p.acepto);
       if (r && r.ok) { guardarPend(null); irAlPanel(r.slug); return; }
       Object.assign(a, p, { err: (r && r.error) || "No se pudo crear el showroom.", esperando: false });
       guardarPend(null);
@@ -135,7 +135,7 @@
       ${f("al-yo", "Tu nombre", "yo", "text", 'maxlength="40" placeholder="Así te saluda el panel"')}`;
     if (R.user) {
       return caja(`<h1>Creá tu showroom</h1><p class="small muted">Vas a crearlo con tu cuenta <b>${esc(R.user.email)}</b>.</p>
-        <form class="stack" id="alta-form" novalidate>${datosShowroom}${msg}
+        <form class="stack" id="alta-form" novalidate>${datosShowroom}${EG.consentimientoAlta(a.acepto)}${msg}
         <button class="btn dark block" type="submit" ${a.busy ? "disabled" : ""}>${a.busy ? "Creando…" : "Crear mi agenda"}</button></form>
         <button type="button" class="linkbtn" style="align-self:flex-start" data-act="alta.salir">Usar otra cuenta</button>`);
     }
@@ -145,7 +145,7 @@
         <div class="stack sm"><span class="label">${cuenta ? "Ingresá con tu cuenta" : "Tu cuenta para entrar al panel"}</span>
         ${f("al-email", "Email", "email", "email", 'autocomplete="email"')}
         ${f("al-clave", "Contraseña", "clave", "password", `autocomplete="${cuenta ? "current-password" : "new-password"}"`, cuenta ? "" : "(mínimo 8 caracteres)")}</div>
-        ${msg}<button class="btn dark block" type="submit" ${a.busy ? "disabled" : ""}>${a.busy ? "Un momento…" : cuenta ? "Ingresar y crear mi agenda" : "Crear mi agenda"}</button>
+        ${EG.consentimientoAlta(a.acepto)}${msg}<button class="btn dark block" type="submit" ${a.busy ? "disabled" : ""}>${a.busy ? "Un momento…" : cuenta ? "Ingresar y crear mi agenda" : "Crear mi agenda"}</button>
         <button type="button" class="linkbtn" style="align-self:flex-start" data-act="alta.modo">${cuenta ? "No tengo cuenta: crear una" : "Ya tengo cuenta"}</button></form>`);
   };
 
@@ -187,7 +187,8 @@
     if (a.nombre.length < 2) { a.err = "Escribí el nombre de tu showroom."; return; }
     if (a.slug.length < 3) { a.err = "Elegí un link de al menos 3 letras."; return; }
     if (a.slugOk === false) { a.err = "Ese link no está disponible: probá con otro."; return; }
-    const pedido = { codigo: a.codigo, slug: a.slug, nombre: a.nombre, yo: a.yo.trim() };
+    if (!a.acepto) { a.err = "Para crear tu agenda, aceptá los Términos y la Política de privacidad."; return; }
+    const pedido = { codigo: a.codigo, slug: a.slug, nombre: a.nombre, yo: a.yo.trim(), acepto: EG.LEGAL_VERSION };
     if (!R.user) {
       if (!/^\S+@\S+\.\S+$/.test(a.email.trim())) { a.err = "Revisá el email."; return; }
       if (a.clave.length < 8) { a.err = "La contraseña tiene que tener al menos 8 caracteres."; return; }
@@ -202,7 +203,7 @@
         if (r.yaExistia) { a.modo = "cuenta"; a.err = "Ese email ya tiene cuenta: escribí tu contraseña y tocá “Ingresar y crear mi agenda”."; return; }
         if (!r.sesion) { guardarPend(pedido); a.esperando = true; return; }
       }
-      const r = await R.crearShowroom(pedido.codigo, pedido.slug, pedido.nombre, pedido.yo);
+      const r = await R.crearShowroom(pedido.codigo, pedido.slug, pedido.nombre, pedido.yo, pedido.acepto);
       if (r && r.ok) { a.clave = ""; irAlPanel(r.slug); return; }
       a.err = (r && r.error) || "No se pudo crear el showroom.";
     })().catch((e) => {

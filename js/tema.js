@@ -4,7 +4,7 @@
   "use strict";
   var EG = (root.EG = root.EG || {});
 
-  // Pares de fuentes de Google Fonts: "texto" para todo y "titulo" para el nombre/logo en texto.
+  // Pares de fuentes (alojadas en la app, licencia OFL): "texto" para todo y "titulo" para el nombre/logo en texto.
   EG.FUENTES = [
     { id: "clasica", nombre: "Clásica", texto: "Poppins", titulo: "Playfair Display", url: "Poppins:wght@400;500;600;700&family=Playfair+Display:wght@600" },
     { id: "moderna", nombre: "Moderna", texto: "DM Sans", titulo: "DM Serif Display", url: "DM+Sans:wght@400;500;600;700&family=DM+Serif+Display" },
@@ -73,17 +73,8 @@
   };
 
   /* ---------- aplicar ---------- */
-  var cargadas = {};
-  EG.cargarFuente = function (id) {
-    var f = EG.FUENTES.find(function (x) { return x.id === id; });
-    if (!f || cargadas[id] || typeof document === "undefined") return;
-    cargadas[id] = true;
-    if (id === "clasica") return; // ya viene en index.html
-    var l = document.createElement("link");
-    l.rel = "stylesheet";
-    l.href = "https://fonts.googleapis.com/css2?family=" + f.url + "&display=swap";
-    document.head.appendChild(l);
-  };
+  // Las fuentes están alojadas en la app (css/fonts.css): el navegador baja solo la que se usa. No hay conexión con Google Fonts.
+  EG.cargarFuente = function () {};
   // Aplica el tema a un elemento (por defecto, a toda la página).
   EG.aplicarTema = function (t, el) {
     var vars = EG.temaVars(t);

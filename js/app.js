@@ -58,12 +58,13 @@
   };
 
   /* ---------- ruteo ---------- */
-  const isPublic = (r) => r === "reservar" || r === "cita";
+  const isPublic = (r) => r === "reservar" || r === "cita" || r === "legal";
   function routeFromHash() {
     const h = location.hash.replace(/^#\/?/, "").split("?")[0];
     const parts = h.split("/");
     if (parts[0] === "reservar") return "reservar";
     if (parts[0] === "alta") return "alta";
+    if (parts[0] === "legal") { S.ui.legal = parts[1] || "privacidad"; return "legal"; }
     if (parts[0] === "cita") { const t = String(parts[1] || "").split("."); S.ui.citaId = t[0] || null; S.ui.citaToken = t[1] || ""; return "cita"; }
     return PANEL.indexOf(parts[0]) >= 0 ? parts[0] : "inicio";
   }
@@ -140,15 +141,17 @@
     }
     app.innerHTML = S.loading ? `<div class="splash" aria-busy="true"></div>`
       : R.on && R.error && !(pub && R.publicLoaded) ? `<main class="pubwrap narrow"><h1>No se pudo cargar</h1><p class="muted">${EG.esc(R.error)}</p><button type="button" class="btn dark" onclick="location.reload()">Reintentar</button></main>`
-      : S.ui.route === "alta" ? EG.views.alta()
-      : pub ? EG.views.publico() : R.on && (!R.user || !R.panel || R.recovery) ? EG.views.auth() : EG.views.panel();
+      : S.ui.route === "alta" ? EG.views.alta() + EG.pieLegal(null)
+      : S.ui.route === "legal" ? EG.views.legal()
+      : pub ? EG.views.publico() + (S.ui.splash ? "" : EG.pieLegal(S.db.settings))
+      : R.on && (!R.user || !R.panel || R.recovery) ? EG.views.auth() + EG.pieLegal(S.db.settings) : EG.views.panel();
     app.querySelectorAll("[data-keepscroll]").forEach((el) => {
       const k = keep[el.dataset.keepscroll];
       if (k) { el.scrollLeft = k[0]; el.scrollTop = k[1]; }
     });
     app.querySelectorAll("input[data-filter]").forEach((el) => { if (el.value) applyFilter(el); });
     window.scrollTo(0, opts && opts.top ? 0 : y);
-    document.title = pub ? S.db.settings.nombre + " · Reservá tu cita" : "Agenda Showroom · " + S.db.settings.nombre;
+    document.title = S.ui.route === "legal" ? S.db.settings.nombre + " · Información legal" : pub ? S.db.settings.nombre + " · Reservá tu cita" : "Agenda Showroom · " + S.db.settings.nombre;
   };
 
   /* ---------- eventos ---------- */

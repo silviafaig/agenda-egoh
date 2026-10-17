@@ -191,8 +191,8 @@
     // Supabase no avisa si el email ya existía: lo reconocemos porque vuelve sin identidades.
     return { sesion: !!data.session, yaExistia: !!(data.user && Array.isArray(data.user.identities) && !data.user.identities.length) };
   };
-  R.crearShowroom = async (codigo, slug, nombre, yo) => {
-    const { data, error } = await sb.rpc("crear_showroom", { p_codigo: codigo, p_slug: slug, p_nombre: nombre, p_tu_nombre: yo });
+  R.crearShowroom = async (codigo, slug, nombre, yo, acepto) => {
+    const { data, error } = await sb.rpc("crear_showroom", { p_codigo: codigo, p_slug: slug, p_nombre: nombre, p_tu_nombre: yo, p_acepto: acepto || "" });
     if (error) throw new Error(error.message);
     return data;
   };

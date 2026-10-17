@@ -21,7 +21,7 @@
   const newBooking = () => {
     const d = leerDatos() || {};
     return { tipo: null, fecha: null, hora: null, prendas: [], nombre: d.nombre || "", whatsapp: d.whatsapp || "", email: d.email || "",
-      zona: d.zona || "", comoCompra: d.comoCompra || "", queBusca: "", recordar: true };
+      zona: d.zona || "", comoCompra: d.comoCompra || "", queBusca: "", recordar: !!leerDatos(), acepto: false };
   };
   S.ui.booking = newBooking();
 
@@ -109,7 +109,7 @@
     const libre = (d) => EG.slotsCliente(s, S.db.appts, d, null, S.db.bloqueos, ignorarId).some((x) => !x.off);
     return `<div class="days" data-keepscroll="dias" role="group" aria-label="Día">${dias.map((d) => {
       const x = EG.parseYmd(d);
-      return `<button type="button" class="day" data-act="${act}" data-v="${d}" aria-pressed="${sel === d}" ${libre(d) ? "" : "disabled"} aria-label="${esc(fechaLarga(d))}"><span>${DIAS[x.getDay()]}</span><b>${x.getDate()}</b><span>${MESES[x.getMonth()]}</span></button>`;
+      return `<button type="button" class="day" data-act="${act}" data-v="${d}" aria-pressed="${sel === d}" ${libre(d) ? "" : "disabled"} ><span>${DIAS[x.getDay()]}</span> <b>${x.getDate()}</b> <span>${MESES[x.getMonth()]}</span><span class="sr-only"> (${esc(fechaLarga(d))})</span></button>`;
     }).join("")}</div>`;
   }
   // Elige el primer día con lugar si el elegido ya no sirve.
@@ -186,13 +186,14 @@
       <form class="stack lg" id="pub-form" novalidate><div class="fgrid two">
         ${field("nombre", "Nombre y apellido", "text", b.nombre, "name")}
         ${field("whatsapp", "WhatsApp", "tel", b.whatsapp, "tel", 'inputmode="tel" placeholder="11 5555 0101"')}
-        ${field("email", "Email", "email", b.email, "email", 'inputmode="email" placeholder="tu@email.com"')}
-        ${field("zona", "Zona", "text", b.zona, "address-level2", 'placeholder="Ej: Lanús"')}
+        ${field("email", R.mails ? "Email" : '<span>Email <span class="hint">(opcional)</span></span>', "email", b.email, "email", 'inputmode="email" placeholder="tu@email.com"' + (R.mails ? " required" : ""))}
+        ${field("zona", '<span>Zona <span class="hint">(opcional)</span></span>', "text", b.zona, "address-level2", 'placeholder="Ej: Lanús"')}
         <div class="f full"><span>¿Cómo comprás?</span><div class="pills" role="group" aria-label="¿Cómo comprás?">${s.opcionesComoCompra.map((k) =>
           `<button type="button" class="pill" data-act="pub.como" data-v="${esc(k)}" aria-pressed="${b.comoCompra === k}">${esc(k)}</button>`).join("")}</div></div>
         <label class="f full" for="queBusca"><span>¿Qué estás buscando? <span class="hint">(opcional)</span></span><textarea class="t" id="queBusca" name="queBusca" data-bind="booking.queBusca" placeholder="Talles, colores, para qué temporada…">${esc(b.queBusca)}</textarea></label>
       </div>
       <label class="check"><input type="checkbox" data-bind="booking.recordar" ${b.recordar ? "checked" : ""}>Recordar mis datos en este dispositivo</label>
+      ${EG.consentimientoReserva(s, b.acepto)}
       ${S.ui.formErr ? `<p class="err" role="alert">${esc(S.ui.formErr)}</p>` : ""}
       <button class="btn dark block" type="submit">Ver resumen</button></form>`;
   }
@@ -382,8 +383,9 @@
     const fail = (m) => { ui.formErr = m; };
     if (b.nombre.trim().length < 2) return fail("Escribí tu nombre y apellido.");
     if (!EG.normalizePhone(b.whatsapp)) return fail("Revisá el WhatsApp: escribilo con código de área, por ejemplo 11 5555 0101.");
-    if (!/^\S+@\S+\.\S+$/.test(b.email.trim())) return fail("Revisá el email, parece incompleto.");
+    if ((R.mails || b.email.trim()) && !/^\S+@\S+\.\S+$/.test(b.email.trim())) return fail("Revisá el email, parece incompleto.");
     if (!b.comoCompra) return fail("Elegí cómo comprás.");
+    if (!b.acepto) return fail("Para reservar, aceptá la Política de privacidad y los Términos.");
     ui.formErr = "";
     ui.step = 4;
     return "top";
@@ -392,7 +394,7 @@
   A["pub.confirmar"] = () => {
     const ui = S.ui, b = ui.booking, s = S.db.settings;
     const wa = EG.normalizePhone(b.whatsapp);
-    if (!wa || !b.comoCompra) { ui.step = 3; return "top"; }
+    if (!wa || !b.comoCompra || !b.acepto) { ui.step = 3; return "top"; }
     if (!EG.isSlotFree(s, S.db.appts, b.fecha, b.hora, null, S.db.bloqueos) || !EG.dentroDePlazo(s, b.fecha, b.hora)) {
       b.hora = null;
       ui.step = 1;
@@ -404,7 +406,7 @@
     if (R.on) {
       if (ui.busy) return false;
       ui.busy = true;
-      R.reservar(Object.assign({ fecha: b.fecha, hora: b.hora, tipo: b.tipo, queBusca: b.queBusca.trim(), prendas }, datos))
+      R.reservar(Object.assign({ fecha: b.fecha, hora: b.hora, tipo: b.tipo, queBusca: b.queBusca.trim(), prendas, consentimiento: b.acepto ? EG.LEGAL_VERSION : "" }, datos))
         .then(async (r) => {
           ui.busy = false;
           if (r.error) {
@@ -429,7 +431,7 @@
       id: EG.uid(), fecha: b.fecha, hora: b.hora, tipo: b.tipo, estado: "confirmada", queBusca: b.queBusca.trim(),
       prendas: b.prendas.map((i) => ({ id: i.id, nombre: EG.itemName(i, S.prod), talle: i.talle, seLlevo: null })),
       notas: "", sala: b.tipo === "video" ? "showroom-" + EG.uid(14) : null, creada: new Date().toISOString(),
-      clientaId: c.id, origen: "clienta"
+      clientaId: c.id, origen: "clienta", consentimiento: b.acepto ? { version: EG.LEGAL_VERSION, fecha: new Date().toISOString() } : null
     }, datos);
     S.db.appts.push(a);
     S.save();

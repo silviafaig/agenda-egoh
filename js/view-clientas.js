@@ -61,6 +61,9 @@
           <label class="f" for="cc-${esc(c.id)}">¿Cómo compra?<select class="t" id="cc-${esc(c.id)}" data-change="cl.como" data-c="${esc(c.id)}"><option value="">Sin dato</option>${opcionesComo(c.comoCompra).map((k) => `<option${c.comoCompra === k ? " selected" : ""}>${esc(k)}</option>`).join("")}</select></label></div>
         <div class="card stack sm"><h3>Talles habituales</h3>${st.talles.length ? `<div class="row">${st.talles.map((t) => `<span class="chip dark">Talle ${esc(t)}</span>`).join("")}</div><p class="xs muted">Calculado con lo que eligió y lo que se llevó.</p>` : `<p class="small muted">Todavía no hay datos.</p>`}</div>
         <div class="card stack sm"><label class="f" for="cn-${esc(c.id)}"><h3>Notas</h3><textarea class="t" id="cn-${esc(c.id)}" data-cnote="${esc(c.id)}" placeholder="Preferencias, cómo paga, a quién le vende…">${esc(c.notas)}</textarea></label></div>
+        <div class="card stack sm"><h3>Borrar datos</h3><p class="xs muted">Si la clienta te pide borrar sus datos (Ley 25.326, dentro de los 5 días hábiles). Se borran su contacto y sus notas; sus citas pasadas quedan sin nombre para no perder tus estadísticas. No se puede deshacer.</p>
+          <button type="button" class="btn sm danger" style="align-self:flex-start" data-act="cl.borrar" data-v="${esc(c.id)}">${I("trash-2", 15)}${S.ui.confirmar === "cl-borrar" ? "Sí, borrar sus datos" : "Borrar datos de la clienta"}</button>
+          ${S.ui.confirmar === "cl-borrar" ? `<p class="xs muted" role="status">Tocá de nuevo para confirmar.</p>` : ""}</div>
       </div></div></div>`;
   }
 
@@ -76,7 +79,23 @@
   };
   A["cl.filtro"] = (el) => { S.ui.clFiltro = el.dataset.v; };
   A["cl.ver"] = (el) => { S.ui.clienta = el.dataset.v; S.ui.open = null; if (S.ui.route !== "clientas") { S.go("clientas"); return false; } return "top"; };
-  A["cl.volver"] = () => { S.ui.clienta = null; return "top"; };
+  A["cl.volver"] = () => { S.ui.clienta = null; S.ui.confirmar = null; return "top"; };
+  // Derecho de supresión: borra la clienta y deja sus citas pasadas anónimas (las próximas hay que cancelarlas antes).
+  A["cl.borrar"] = (el) => {
+    const c = S.db.clientas.find((x) => x.id === el.dataset.v);
+    if (!c) return;
+    const citas = EG.citasDe(S.db, c);
+    const hoy = EG.ymd(new Date());
+    if (citas.some((a) => a.estado === "confirmada" && a.fecha >= hoy)) { S.ui.confirmar = null; S.toast("Tiene una cita próxima: cancelala primero."); return; }
+    if (S.ui.confirmar !== "cl-borrar") { S.ui.confirmar = "cl-borrar"; return; }
+    S.ui.confirmar = null;
+    citas.forEach((a) => Object.assign(a, { nombre: "Clienta borrada", whatsapp: "", email: "", zona: "", comoCompra: "", queBusca: "", notas: "", seguimiento: "", clientaId: null, borrada: new Date().toISOString() }));
+    S.db.clientas = S.db.clientas.filter((x) => x !== c);
+    S.ui.clienta = null;
+    S.save();
+    S.toast("Listo: se borraron los datos de la clienta.");
+    return "top";
+  };
   A["cl.export"] = () => {
     const rows = [["Nombre", "WhatsApp", "Email", "Zona", "Cómo compra", "Visitas", "Prendas llevadas", "Prendas elegidas", "Faltazos", "Última visita", "Clienta desde", "Notas"]];
     S.db.clientas.forEach((c) => {

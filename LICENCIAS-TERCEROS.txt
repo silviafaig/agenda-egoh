@@ -1,0 +1,9 @@
+Componentes de terceros incluidos en Agenda Showroom
+
+- Lucide (íconos, js/icons.js) — ISC License — Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022. https://lucide.dev/license
+  Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+- supabase-js (js/vendor/supabase.js) — MIT License — Copyright (c) 2020 Supabase. https://github.com/supabase/supabase-js
+- QR Code Generator (js/vendor/qrcode.js) — MIT License — Copyright (c) 2009 Kazuhiko Arase. "QR Code" es marca registrada de DENSO WAVE INCORPORATED.
+- Fuentes (fonts/) — SIL Open Font License 1.1. Detalle en fonts/LICENCIAS.txt.
+
+Texto de la licencia MIT: https://opensource.org/license/mit

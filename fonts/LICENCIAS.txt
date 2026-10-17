@@ -1,0 +1,38 @@
+Fuentes usadas por la app. Todas bajo SIL Open Font License 1.1 (se pueden usar e incluir en software; no se venden por separado).
+Texto completo: https://openfontlicense.org/open-font-license-official-text/
+
+== poppins ==
+Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins) Poppins-ThinItalic.ttf: Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins) Poppins-ExtraLight.ttf: Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins) Poppin
+Licencia: SIL Open Font License, Version 1.1
+
+== playfair-display ==
+Copyright 2017 The Playfair Display Project Authors (https://github.com/clauseggers/Playfair-Display), with Reserved Font Name "Playfair Display". PlayfairDisplay-Italic[wght].ttf: Copyright 2017 The Playfair Display Project Authors (https://github.com/clauseggers/Playfair-Display), with Reserved Fo
+Licencia: SIL Open Font License, Version 1.1
+
+== dm-sans ==
+Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts) DMSans-Italic[opsz,wght].ttf: Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)
+Licencia: SIL Open Font License, Version 1.1
+
+== dm-serif-display ==
+Copyright 2014 - 2017 Adobe Systems Incorporated (http://www.adobe.com/), with Reserved Font Name 'Source'. Copyright 2019 Google LLC. DMSerifDisplay-Italic.ttf: Copyright 2014 - 2017 Adobe Systems Incorporated (http://www.adobe.com/), with Reserved Font Name 'Source'. Copyright 2019 Google LLC.
+Licencia: SIL Open Font License, Version 1.1
+
+== montserrat ==
+Copyright 2011 The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat) Montserrat-Italic[wght].ttf: Copyright 2011 The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat)
+Licencia: SIL Open Font License, Version 1.1
+
+== cormorant-garamond ==
+Copyright 2015 The Cormorant Project Authors (github.com/CatharsisFonts/Cormorant) CormorantGaramond-Italic[wght].ttf: Copyright 2015 The Cormorant Project Authors (github.com/CatharsisFonts/Cormorant)
+Licencia: SIL Open Font License, Version 1.1
+
+== lato ==
+Copyright (c) 2010-2011 by tyPoland Lukasz Dziedzic (team@latofonts.com) with Reserved Font Name "Lato". Licensed under the SIL Open Font License, Version 1.1. Lato-HairlineItalic.ttf: Copyright (c) 2010-2011 by tyPoland Lukasz Dziedzic (team@latofonts.com) with Reserved Font Name "Lato". Licensed u
+Licencia: SIL Open Font License, Version 1.1
+
+== libre-baskerville ==
+Copyright 2012 The Libre Baskerville Project Authors (https://github.com/impallari/Libre-Baskerville) LibreBaskerville-Italic[wght].ttf: Copyright 2012 The Libre Baskerville Project Authors (https://github.com/impallari/Libre-Baskerville)
+Licencia: SIL Open Font License, Version 1.1
+
+== work-sans ==
+Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans) WorkSans-Italic[wght].ttf: Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
+Licencia: SIL Open Font License, Version 1.1

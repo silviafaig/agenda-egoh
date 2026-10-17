@@ -430,3 +430,26 @@ body.is-public .toast { bottom: 24px; }
 }
 .contacto { gap: 8px; margin-top: -4px; }
 input[type="checkbox"] { accent-color: var(--accent); }
+
+/* ---------- legal: pie, páginas y consentimiento ---------- */
+.pill[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+a.pill { color: var(--ink); text-decoration: none; display: inline-block; }
+.pielegal { max-width: 760px; margin: 8px auto 0; padding: 18px 20px 32px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.pielegal nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; }
+.pielegal a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; padding: 4px 0; }
+.pielegal a:hover { color: var(--ink); }
+.consent a, .prose a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.xxs { font-size: 10.5px; line-height: 1.45; }
+.legal { display: flex; flex-direction: column; gap: 12px; }
+.prose { display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.6; }
+.prose h2 { font-size: 16px; margin-top: 14px; }
+.prose ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.prose small { font-size: 12px; color: var(--muted); }
+.prose code { font-size: 12px; background: var(--card); padding: 1px 4px; border-radius: 4px; }
+.tabla { overflow-x: auto; }
+.tabla table { border-collapse: collapse; width: 100%; font-size: 12.5px; min-width: 520px; }
+.tabla th, .tabla td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.tabla th { font-weight: 600; }
+.check:has(> span) { align-items: flex-start; }
+.check:has(> span) input { flex-shrink: 0; margin-top: 1px; }
+.pill.sel { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }

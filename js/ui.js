@@ -19,7 +19,7 @@
 
   U.photo = (p) => {
     const src = EG.photoSrc(p);
-    return src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async">` : I("shirt", 30);
+    return src ? `<img src="${esc(src)}" alt="${esc("Foto de " + (p.nombre || "la prenda"))}" loading="lazy" decoding="async">` : I("shirt", 30);
   };
   U.thumb = (p) => {
     const src = EG.photoSrc(p);
